@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "GreenRoute",
+    "slug": "GreenRoute",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#F7FAF8",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "GreenRoute использует ваше местоположение, чтобы строить маршрут от точки, где вы находитесь."
+        }
+      ],
+      "expo-font"
+    ],
+    "scheme": "greenroute",
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
