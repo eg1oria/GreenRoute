@@ -1,5 +1,7 @@
 import type { LatLng, Place } from '@/types';
 
+import { CITY_BBOX, CITY_CENTER, isInCity } from './city';
+
 const PHOTON_URL = 'https://photon.komoot.io';
 
 type PhotonFeature = {
@@ -20,7 +22,7 @@ type PhotonFeature = {
 function toPlace(feature: PhotonFeature): Place {
   const p = feature.properties;
   const address = [p.street, p.housenumber].filter(Boolean).join(', ');
-  const name = p.name ?? (address || p.district || p.city || 'Точка на карте');
+  const name = p.name ?? (address || p.district || p.city || '');
   const subtitle = [p.name && address ? address : undefined, p.city ?? p.state, p.country]
     .filter((part) => part && part !== name)
     .join(', ');
@@ -41,9 +43,11 @@ async function request(path: string, signal?: AbortSignal): Promise<Place[]> {
   return places.filter((place, i) => places.findIndex((other) => other.id === place.id) === i);
 }
 
-export function searchPlaces(query: string, near?: LatLng, signal?: AbortSignal): Promise<Place[]> {
-  const bias = near ? `&lat=${near.latitude}&lon=${near.longitude}` : '';
-  return request(`/api/?q=${encodeURIComponent(query)}&limit=7&lang=default${bias}`, signal);
+/** Ищет рядом с near; по умолчанию и пока near в городе — только в пределах города. */
+export function searchPlaces(query: string, near: LatLng = CITY_CENTER, signal?: AbortSignal): Promise<Place[]> {
+  const bias = `&lat=${near.latitude}&lon=${near.longitude}`;
+  const bounds = isInCity(near) ? `&bbox=${CITY_BBOX}` : '';
+  return request(`/api/?q=${encodeURIComponent(query)}&limit=7&lang=default${bias}${bounds}`, signal);
 }
 
 export async function reverseGeocode(coord: LatLng, signal?: AbortSignal): Promise<Place | undefined> {

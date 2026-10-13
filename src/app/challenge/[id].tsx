@@ -1,19 +1,23 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Text } from '@/components/Text';
 import { Button, Card, ProgressBar, SectionTitle } from '@/components/ui';
+import { useStrings } from '@/i18n';
 import { daysLeft, leaderboard, myContribution } from '@/lib/challenges';
-import { plural } from '@/lib/format';
 import { formatMetric } from '@/lib/metrics';
 import { useAppStore } from '@/store/AppStore';
 import { CHALLENGES } from '@/store/seed';
+import { useSettings } from '@/store/Settings';
 import { useTheme } from '@/theme/useTheme';
 
 export default function ChallengeScreen() {
   const t = useTheme();
   const insets = useSafeAreaInsets();
+  const { fontScale } = useSettings();
+  const s = useStrings();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { trips, memberships, joinTeam, leaveChallenge } = useAppStore();
   const [picked, setPicked] = useState<string | null>(null);
@@ -22,7 +26,7 @@ export default function ChallengeScreen() {
   if (!challenge) {
     return (
       <View style={styles.missing}>
-        <Text style={{ color: t.textSecondary }}>Челлендж не найден.</Text>
+        <Text style={{ color: t.textSecondary }}>{s.challenge.notFound}</Text>
       </View>
     );
   }
@@ -35,31 +39,29 @@ export default function ChallengeScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: t.background }]}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={[styles.title, { color: t.text }]}>{challenge.title}</Text>
-        <Text style={[styles.description, { color: t.textSecondary }]}>{challenge.description}</Text>
+        <Text style={[styles.title, { color: t.text }]}>{s.challengeText[challenge.id].title}</Text>
+        <Text style={[styles.description, { color: t.textSecondary }]}>{s.challengeText[challenge.id].description}</Text>
 
         <Card style={styles.facts}>
           <View style={styles.fact}>
-            <Text style={[styles.factValue, { color: t.text }]}>{formatMetric(challenge.metric, challenge.target)}</Text>
-            <Text style={[styles.factLabel, { color: t.textSecondary }]}>цель команды</Text>
+            <Text style={[styles.factValue, { color: t.text }]}>{formatMetric(s, challenge.metric, challenge.target)}</Text>
+            <Text style={[styles.factLabel, { color: t.textSecondary }]}>{s.challenge.teamGoal}</Text>
           </View>
           <View style={styles.fact}>
-            <Text style={[styles.factValue, { color: t.text }]}>
-              {days} {plural(days, ['день', 'дня', 'дней'])}
-            </Text>
-            <Text style={[styles.factLabel, { color: t.textSecondary }]}>осталось</Text>
+            <Text style={[styles.factValue, { color: t.text }]}>{s.count.days(days)}</Text>
+            <Text style={[styles.factLabel, { color: t.textSecondary }]}>{s.challenge.left}</Text>
           </View>
           {membership && (
             <View style={styles.fact}>
               <Text style={[styles.factValue, { color: t.text }]}>
-                {formatMetric(challenge.metric, myContribution(challenge, membership, trips))}
+                {formatMetric(s, challenge.metric, myContribution(challenge, membership, trips))}
               </Text>
-              <Text style={[styles.factLabel, { color: t.textSecondary }]}>ваш вклад</Text>
+              <Text style={[styles.factLabel, { color: t.textSecondary }]}>{s.challenge.yourShare}</Text>
             </View>
           )}
         </Card>
 
-        <SectionTitle>{membership ? 'Рейтинг команд' : 'Выберите команду'}</SectionTitle>
+        <SectionTitle>{membership ? s.challenge.ranking : s.challenge.chooseTeam}</SectionTitle>
 
         {rows.map((row) => {
           const highlighted = row.isMine || (!membership && row.team.id === picked);
@@ -75,19 +77,19 @@ export default function ChallengeScreen() {
                 styles.row,
                 { backgroundColor: highlighted ? t.accentSoft : t.card, borderColor: highlighted ? t.accent : t.border },
               ]}>
-              <Text style={[styles.rank, { color: t.textSecondary }]}>{row.rank}</Text>
+              <Text style={[styles.rank, { width: 20 * fontScale, color: t.textSecondary }]}>{row.rank}</Text>
               <View style={styles.rowMain}>
                 <View style={styles.rowHeader}>
                   <Text style={[styles.teamName, { color: t.text }]} numberOfLines={1}>
-                    {row.team.name}
-                    {row.isMine ? ' · вы' : ''}
+                    {s.team[row.team.id]}
+                    {row.isMine ? ` · ${s.challenge.you}` : ''}
                   </Text>
-                  <Text style={[styles.score, { color: t.text }]}>{formatMetric(challenge.metric, row.score)}</Text>
+                  <Text style={[styles.score, { color: t.text }]}>{formatMetric(s, challenge.metric, row.score)}</Text>
                 </View>
                 <ProgressBar progress={row.score / maxScore} color={done ? t.achievement : t.accent} />
                 <Text style={[styles.members, { color: t.textSecondary }]}>
-                  {row.team.members} {plural(row.team.members, ['участник', 'участника', 'участников'])}
-                  {done ? ' · цель достигнута' : ''}
+                  {s.count.members(row.team.members)}
+                  {done ? ` · ${s.challenge.goalReached}` : ''}
                 </Text>
               </View>
             </Pressable>
@@ -96,7 +98,7 @@ export default function ChallengeScreen() {
 
         {membership && (
           <Pressable accessibilityRole="button" onPress={() => leaveChallenge(challenge.id)} style={styles.leave}>
-            <Text style={[styles.leaveText, { color: t.level.high }]}>Выйти из челленджа</Text>
+            <Text style={[styles.leaveText, { color: t.level.high }]}>{s.challenge.leave}</Text>
           </Pressable>
         )}
       </ScrollView>
@@ -108,7 +110,7 @@ export default function ChallengeScreen() {
             { backgroundColor: t.background, borderTopColor: t.border, paddingBottom: insets.bottom + 10 },
           ]}>
           <Button
-            title={picked ? 'Вступить в команду' : 'Выберите команду'}
+            title={picked ? s.challenge.join : s.challenge.chooseTeam}
             disabled={!picked}
             onPress={() => picked && joinTeam(challenge.id, picked)}
           />
@@ -129,7 +131,7 @@ const styles = StyleSheet.create({
   factValue: { fontSize: 17, fontWeight: '700' },
   factLabel: { fontSize: 12 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, borderWidth: 1.5, padding: 14 },
-  rank: { width: 20, fontSize: 18, fontWeight: '800', textAlign: 'center' },
+  rank: { fontSize: 18, fontWeight: '800', textAlign: 'center' },
   rowMain: { flex: 1, gap: 8 },
   rowHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   teamName: { flex: 1, fontSize: 16, fontWeight: '700' },

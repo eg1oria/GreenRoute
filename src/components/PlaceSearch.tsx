@@ -1,13 +1,16 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { placeName, useStrings } from '@/i18n';
 import { searchPlaces } from '@/lib/geocoding';
 import { getCurrentPlace, LocationDeniedError } from '@/lib/location';
 import type { IconName } from '@/lib/modes';
 import { useTheme } from '@/theme/useTheme';
 import type { LatLng, Place } from '@/types';
+
+import { Text, TextInput } from './Text';
 
 const DEBOUNCE_MS = 400;
 const MIN_QUERY = 2;
@@ -34,6 +37,7 @@ type Response = { query: string; places: Place[]; failed: boolean };
 
 function SearchBody({ title, near, onPick, onClose }: Omit<Props, 'visible'>) {
   const t = useTheme();
+  const s = useStrings();
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
   const [response, setResponse] = useState<Response | null>(null);
@@ -48,9 +52,9 @@ function SearchBody({ title, near, onPick, onClose }: Omit<Props, 'visible'>) {
   const searchMessage = !current
     ? null
     : current.failed
-      ? 'Не удалось загрузить подсказки. Проверьте подключение к интернету.'
+      ? s.search.loadFailed
       : current.places.length === 0
-        ? 'Ничего не нашлось — попробуйте уточнить адрес.'
+        ? s.search.nothingFound
         : null;
   const message = locationMessage ?? searchMessage;
 
@@ -78,8 +82,8 @@ function SearchBody({ title, near, onPick, onClose }: Omit<Props, 'visible'>) {
     } catch (error) {
       setLocationMessage(
         error instanceof LocationDeniedError
-          ? 'Нет доступа к геолокации. Разрешите его в настройках телефона или введите адрес.'
-          : 'Не удалось определить местоположение. Введите адрес вручную.',
+          ? s.search.locationDenied
+          : s.search.locationFailed,
       );
     } finally {
       setLocating(false);
@@ -120,12 +124,13 @@ function SearchBody({ title, near, onPick, onClose }: Omit<Props, 'visible'>) {
             placeholderTextColor={t.textSecondary}
             returnKeyType="search"
             autoCorrect={false}
+            keyboardAppearance={t.dark ? 'dark' : 'light'}
             style={[styles.input, { color: t.text }]}
           />
           {searching && <ActivityIndicator color={t.primary} />}
         </View>
         <Pressable accessibilityRole="button" onPress={onClose} hitSlop={12}>
-          <Text style={[styles.cancel, { color: t.primary }]}>Отмена</Text>
+          <Text style={[styles.cancel, { color: t.primary }]}>{s.common.cancel}</Text>
         </Pressable>
       </View>
 
@@ -136,11 +141,11 @@ function SearchBody({ title, near, onPick, onClose }: Omit<Props, 'visible'>) {
         contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}
         ListHeaderComponent={
           <>
-            {row('locate', 'Моё местоположение', 'Определить по геолокации', pickCurrentLocation, locating)}
+            {row('locate', s.common.myLocation, s.search.detect, pickCurrentLocation, locating)}
             {message && <Text style={[styles.message, { color: t.textSecondary }]}>{message}</Text>}
           </>
         }
-        renderItem={({ item }) => row('location-outline', item.name, item.subtitle, () => onPick(item))}
+        renderItem={({ item }) => row('location-outline', placeName(s, item), item.subtitle, () => onPick(item))}
       />
     </View>
   );

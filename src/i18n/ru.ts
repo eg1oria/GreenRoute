@@ -1,0 +1,210 @@
+import type { FootprintLevel } from '@/lib/carbon';
+import { createFormat, pluralRu } from '@/lib/format';
+import type { ChallengeId, MetricKind, MetroStationId, Mode, TeamId } from '@/types';
+
+const days = (n: number) => `${n} ${pluralRu(n, ['день', 'дня', 'дней'])}`;
+const phoneCharges = (n: number) => `${n} ${pluralRu(n, ['зарядка', 'зарядки', 'зарядок'])} смартфона`;
+
+const mode: Record<Mode, { label: string; how: string }> = {
+  walk: { label: 'Пешком', how: 'Пешком' },
+  bike: { label: 'Велосипед', how: 'На велосипеде' },
+  scooter: { label: 'Самокат', how: 'На самокате' },
+  metro: { label: 'Метро', how: 'На метро' },
+  transit: { label: 'Транспорт', how: 'На транспорте' },
+  car: { label: 'Авто', how: 'На авто' },
+};
+
+const level: Record<FootprintLevel, string> = {
+  low: 'Низкий след',
+  medium: 'Средний след',
+  high: 'Высокий след',
+};
+
+const metric: Record<MetricKind, string> = {
+  co2: 'Сэкономить CO₂',
+  activeKm: 'Активные километры',
+  trips: 'Эко-поездки',
+};
+
+const metroStation: Record<MetroStationId, string> = {
+  raiymbek: 'Райымбек батыра',
+  zhibek: 'Жибек Жолы',
+  almaly: 'Алмалы',
+  abay: 'Абая',
+  baikonur: 'Байконур',
+  auezov: 'Театр имени Мухтара Ауэзова',
+  alatau: 'Алатау',
+  sairan: 'Сайран',
+  moskva: 'Москва',
+  saryarka: 'Сарыарка',
+  momyshuly: 'Бауыржан Момышулы',
+};
+
+const challengeText: Record<ChallengeId, { title: string; description: string }> = {
+  'car-free-week': {
+    title: 'Неделя без авто',
+    description: 'Команды соревнуются по числу эко-поездок: любым способом, кроме авто.',
+  },
+  'active-500': {
+    title: 'Активные 500 км',
+    description: 'Пройти и проехать на велосипеде 500 км всей командой за месяц.',
+  },
+  'minus-50': {
+    title: 'Минус 50 кг CO₂',
+    description: 'Сэкономить 50 кг CO₂ за месяц, выбирая маршруты с низким следом вместо авто.',
+  },
+};
+
+const team: Record<TeamId, string> = {
+  sneakers: 'Зелёные кроссовки',
+  velodvor: 'Велодвор',
+  tram: 'Трамвайчик',
+  tailwind: 'Ветер в спину',
+  quiet: 'Тихий ход',
+};
+
+/** Русский — исходный язык: по нему выводится тип Strings, остальные словари обязаны с ним совпадать. */
+export const ru = {
+  format: createFormat({
+    decimal: ',',
+    units: { min: 'мин', h: 'ч', m: 'м', km: 'км', g: 'г', kg: 'кг' },
+    months: ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'],
+    monthFirst: false,
+  }),
+  count: {
+    days,
+    members: (n: number) => `${n} ${pluralRu(n, ['участник', 'участника', 'участников'])}`,
+    trips: (n: number) => `${n} ${pluralRu(n, ['поездка', 'поездки', 'поездок'])}`,
+  },
+  mode,
+  level,
+  metric,
+  metroStation,
+  challengeText,
+  team,
+  common: {
+    from: 'Откуда',
+    to: 'Куда',
+    cancel: 'Отмена',
+    close: 'Закрыть',
+    done: 'Готово',
+    retry: 'Повторить',
+    back: 'Назад',
+    mapPoint: 'Точка на карте',
+    myLocation: 'Моё местоположение',
+    goalReached: 'Цель достигнута',
+    weekGoals: 'Цели на неделю',
+    outOf: (value: string, target: string) => `${value} из ${target}`,
+  },
+  tabs: { route: 'Маршрут', goals: 'Цели', challenges: 'Челленджи', settings: 'Настройки' },
+  route: {
+    locationDenied: 'Нет доступа к геолокации. Разрешите его в настройках телефона или выберите точку на карте.',
+    locationFailed: 'Не удалось определить местоположение. Выберите точку на карте.',
+    building: 'Строим маршруты…',
+    pickPoints: 'Выберите точки маршрута',
+    clearField: (field: string) => `Очистить «${field}»`,
+    swap: 'Поменять местами',
+    fitRoute: 'Показать маршрут целиком',
+    fromMyLocation: 'Маршрут от моего местоположения',
+    collapseSheet: 'Свернуть панель маршрутов',
+    expandSheet: 'Развернуть панель маршрутов',
+    samePoints: 'Точки совпадают',
+    samePointsHint: 'Выберите другую точку назначения — эта слишком близко к началу маршрута.',
+    introTitle: 'Куда отправимся?',
+    introHint:
+      'Укажите, откуда и куда — сравним пеший маршрут, велосипед, самокат, метро и транспорт по времени и углеродному следу. Или нажмите на дом на карте — это будет точка «Откуда», долгое нажатие ставит «Куда».',
+    hideMessage: 'Скрыть сообщение',
+    offline: 'Нет связи с сервисом маршрутов — показаны примерные оценки по прямой.',
+    carEffect: (co2: string) => `На авто эта поездка даст ${co2} CO₂ — больше, чем любой другой способ.`,
+    savedEffect: (how: string, co2: string, equivalent: string) =>
+      `${how} вы сэкономите ${co2} CO₂ по сравнению с авто — ${equivalent}.`,
+    treeEquivalent: (n: number) => `столько дерево поглощает за ${days(n)}`,
+    phoneEquivalent: (n: number) => `как ${phoneCharges(n)}`,
+    record: 'Записать поездку',
+    recommended: 'Советуем',
+    estimate: '≈ оценка',
+    compare: 'Сравнение',
+    time: 'Время',
+  },
+  search: {
+    loadFailed: 'Не удалось загрузить подсказки. Проверьте подключение к интернету.',
+    nothingFound: 'Ничего не нашлось — попробуйте уточнить адрес.',
+    locationDenied: 'Нет доступа к геолокации. Разрешите его в настройках телефона или введите адрес.',
+    locationFailed: 'Не удалось определить местоположение. Введите адрес вручную.',
+    detect: 'Определить по геолокации',
+  },
+  goals: {
+    title: 'Цели',
+    subtitle: 'Ваш экологический эффект и цели на неделю',
+    savedAllTime: 'Сэкономлено CO₂ за всё время',
+    emptyHint: 'Запишите первую поездку — и здесь появится ваш вклад',
+    treeHint: (n: number) => `Столько одно дерево поглощает за ${days(n)}`,
+    vsCar: 'По сравнению с теми же поездками на авто',
+    statCo2Week: 'CO₂ за неделю',
+    statActive: 'активно',
+    statTrips: 'эко-поездок',
+    addGoal: (title: string) => `Добавить цель «${title}»`,
+    history: 'История поездок',
+    historyEmpty: 'Пока пусто. Постройте маршрут на вкладке «Маршрут» и запишите поездку.',
+    deleteTrip: 'Удалить поездку',
+    decrease: 'Уменьшить цель',
+    increase: 'Увеличить цель',
+    remove: 'Удалить цель',
+  },
+  challenges: {
+    title: 'Челленджи',
+    subtitle: 'Командные экологические соревнования',
+    meta: (teams: number, daysLeft: number) =>
+      `${teams} ${pluralRu(teams, ['команда', 'команды', 'команд'])} · осталось ${days(daysLeft)}`,
+    place: (rank: number) => `${rank} место`,
+    pickTeam: 'Выбрать команду',
+    demoNote: 'Команды и их результаты — демонстрационные. Ваш вклад считается по записанным поездкам.',
+  },
+  challenge: {
+    screenTitle: 'Челлендж',
+    notFound: 'Челлендж не найден.',
+    teamGoal: 'цель команды',
+    left: 'осталось',
+    yourShare: 'ваш вклад',
+    ranking: 'Рейтинг команд',
+    chooseTeam: 'Выберите команду',
+    you: 'вы',
+    goalReached: 'цель достигнута',
+    leave: 'Выйти из челленджа',
+    join: 'Вступить в команду',
+  },
+  trip: {
+    notFound: 'Поездка не найдена.',
+    saved: 'Вы сэкономили',
+    footprint: 'След этой поездки',
+    tree: (n: number) => `Столько дерево поглощает за ${days(n)}`,
+    phone: (n: number) => `Как ${phoneCharges(n)}`,
+    comparisonNote: 'Сравнение с той же поездкой на авто. Оценки условные.',
+    nextTime:
+      'В следующий раз попробуйте метро, самокат или велосипед — приложение покажет, сколько CO₂ это сэкономит.',
+    teamContribution: 'Вклад в команду',
+  },
+  settings: {
+    title: 'Настройки',
+    language: 'Язык',
+    theme: 'Тема',
+    themeSystem: 'Системная',
+    themeLight: 'Светлая',
+    themeDark: 'Тёмная',
+    fontSize: 'Размер шрифта',
+    previewBody: 'Так будут выглядеть маршруты, цели и челленджи во всём приложении.',
+    reset: 'Сбросить настройки',
+    appearance: 'Оформление',
+    data: 'Данные',
+    noTrips: 'Пока нет поездок',
+    clearHistory: 'Очистить историю',
+    clearConfirm: 'Удалить всю историю? Прогресс целей и вклад в челленджи обнулятся.',
+    delete: 'Удалить',
+    about: 'О приложении',
+    version: 'Версия',
+    sources: 'Адреса и маршруты',
+    co2Note: 'Оценки CO₂ приблизительные — они нужны, чтобы сравнивать способы между собой.',
+  },
+};
+
+export type Strings = typeof ru;

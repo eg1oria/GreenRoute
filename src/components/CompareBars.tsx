@@ -1,22 +1,26 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import { formatCo2, formatDuration } from '@/lib/format';
-import { MODE_META } from '@/lib/modes';
+import { useStrings } from '@/i18n';
+import { useSettings } from '@/store/Settings';
 import { useTheme } from '@/theme/useTheme';
 import type { Mode, RouteOption } from '@/types';
 
+import { Text } from './Text';
 import { Card } from './ui';
 
 type Metric = 'co2' | 'time';
 
-const METRICS: { key: Metric; label: string }[] = [
-  { key: 'co2', label: 'CO₂' },
-  { key: 'time', label: 'Время' },
-];
+const METRICS: Metric[] = ['co2', 'time'];
+
+// Колонки подписей фиксированной ширины, чтобы полосы начинались на одной линии; растут вместе со шрифтом
+const LABEL_WIDTH = 86;
+const VALUE_WIDTH = 76;
 
 export function CompareBars({ routes, selected }: { routes: RouteOption[]; selected: Mode | null }) {
   const t = useTheme();
+  const s = useStrings();
+  const { fontScale } = useSettings();
   const [metric, setMetric] = useState<Metric>('co2');
 
   const valueOf = (route: RouteOption) => (metric === 'co2' ? route.co2G : route.durationS);
@@ -25,9 +29,9 @@ export function CompareBars({ routes, selected }: { routes: RouteOption[]; selec
   return (
     <Card style={styles.card}>
       <View style={styles.header}>
-        <Text style={[styles.title, { color: t.text }]}>Сравнение</Text>
+        <Text style={[styles.title, { color: t.text }]}>{s.route.compare}</Text>
         <View style={[styles.segment, { backgroundColor: t.background, borderColor: t.border }]}>
-          {METRICS.map(({ key, label }) => {
+          {METRICS.map((key) => {
             const active = key === metric;
             return (
               <Pressable
@@ -36,7 +40,7 @@ export function CompareBars({ routes, selected }: { routes: RouteOption[]; selec
                 accessibilityState={{ selected: active }}
                 onPress={() => setMetric(key)}
                 style={[styles.segmentItem, active && { backgroundColor: t.accent }]}>
-                <Text style={[styles.segmentText, { color: active ? t.onAccent : t.textSecondary }]}>{label}</Text>
+                <Text style={[styles.segmentText, { color: active ? t.onAccent : t.textSecondary }]}>{key === 'co2' ? 'CO₂' : s.route.time}</Text>
               </Pressable>
             );
           })}
@@ -48,16 +52,21 @@ export function CompareBars({ routes, selected }: { routes: RouteOption[]; selec
         const active = route.mode === selected;
         return (
           <View key={route.mode} style={styles.row}>
-            <Text style={[styles.label, { color: active ? t.text : t.textSecondary }, active && styles.bold]}>
-              {MODE_META[route.mode].label}
+            <Text
+              style={[
+                styles.label,
+                { width: LABEL_WIDTH * fontScale, color: active ? t.text : t.textSecondary },
+                active && styles.bold,
+              ]}>
+              {s.mode[route.mode].label}
             </Text>
             <View style={styles.barArea}>
               <View
                 style={[styles.bar, { width: `${(value / max) * 100}%`, backgroundColor: t.mode[route.mode] }]}
               />
             </View>
-            <Text style={[styles.value, { color: t.text }, active && styles.bold]}>
-              {metric === 'co2' ? formatCo2(value) : formatDuration(value)}
+            <Text style={[styles.value, { width: VALUE_WIDTH * fontScale, color: t.text }, active && styles.bold]}>
+              {metric === 'co2' ? s.format.co2(value) : s.format.duration(value)}
             </Text>
           </View>
         );
@@ -74,9 +83,9 @@ const styles = StyleSheet.create({
   segmentItem: { borderRadius: 8, paddingHorizontal: 12, paddingVertical: 5 },
   segmentText: { fontSize: 13, fontWeight: '600' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  label: { width: 86, fontSize: 14 },
+  label: { fontSize: 14 },
   barArea: { flex: 1, height: 14, justifyContent: 'center' },
   bar: { height: 14, minWidth: 4, borderRadius: 7 },
-  value: { width: 76, textAlign: 'right', fontSize: 14 },
+  value: { textAlign: 'right', fontSize: 14 },
   bold: { fontWeight: '700' },
 });

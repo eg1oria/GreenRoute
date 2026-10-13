@@ -4,6 +4,8 @@ import type { FootprintLevel } from '@/lib/carbon';
 export const modeColors: Record<Mode, string> = {
   walk: '#4CAF7A',
   bike: '#2FA6A0',
+  scooter: '#8C7AE6',
+  metro: '#D65C8F',
   transit: '#5B8DEF',
   car: '#B0B8B4',
 };

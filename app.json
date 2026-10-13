@@ -31,7 +31,8 @@
           "locationWhenInUsePermission": "GreenRoute использует ваше местоположение, чтобы строить маршрут от точки, где вы находитесь."
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-localization"
     ],
     "scheme": "greenroute",
     "experiments": {

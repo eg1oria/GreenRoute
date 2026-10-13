@@ -1,13 +1,14 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GoalCard } from '@/components/GoalCard';
+import { ModeIcon } from '@/components/ModeIcon';
+import { Text } from '@/components/Text';
 import { Card, ScreenTitle, SectionTitle } from '@/components/ui';
+import { useStrings } from '@/i18n';
 import { equivalents } from '@/lib/carbon';
-import { formatCo2, formatDate, formatDistance, plural } from '@/lib/format';
-import { formatMetric, METRIC_KINDS, METRIC_META, startOfWeek, sumMetric } from '@/lib/metrics';
-import { MODE_META } from '@/lib/modes';
+import { formatMetric, METRIC_KINDS, startOfWeek, sumMetric } from '@/lib/metrics';
 import { useAppStore } from '@/store/AppStore';
 import { useTheme } from '@/theme/useTheme';
 
@@ -16,6 +17,7 @@ const HISTORY_LIMIT = 20;
 export default function GoalsScreen() {
   const t = useTheme();
   const insets = useSafeAreaInsets();
+  const s = useStrings();
   const { trips, goals, addGoal, removeGoal, adjustGoal, removeTrip } = useAppStore();
 
   const weekStart = startOfWeek().getTime();
@@ -34,26 +36,26 @@ export default function GoalsScreen() {
     <ScrollView
       style={{ backgroundColor: t.background }}
       contentContainerStyle={[styles.content, { paddingTop: insets.top + 16 }]}>
-      <ScreenTitle title="Цели" subtitle="Ваш экологический эффект и цели на неделю" />
+      <ScreenTitle title={s.goals.title} subtitle={s.goals.subtitle} />
 
       <Card style={styles.summary}>
-        <Text style={[styles.summaryLabel, { color: t.textSecondary }]}>Сэкономлено CO₂ за всё время</Text>
-        <Text style={[styles.summaryValue, { color: t.text }]}>{formatCo2(totalSavedG)}</Text>
+        <Text style={[styles.summaryLabel, { color: t.textSecondary }]}>{s.goals.savedAllTime}</Text>
+        <Text style={[styles.summaryValue, { color: t.text }]}>{s.format.co2(totalSavedG)}</Text>
         <Text style={[styles.summaryHint, { color: t.textSecondary }]}>
           {trips.length === 0
-            ? 'Запишите первую поездку — и здесь появится ваш вклад'
+            ? s.goals.emptyHint
             : treeDays >= 1
-              ? `Столько одно дерево поглощает за ${treeDays} ${plural(treeDays, ['день', 'дня', 'дней'])}`
-              : 'По сравнению с теми же поездками на авто'}
+              ? s.goals.treeHint(treeDays)
+              : s.goals.vsCar}
         </Text>
         <View style={[styles.stats, { borderTopColor: t.border }]}>
-          {stat(formatCo2(sumMetric(trips, 'co2', weekStart) * 1000), 'CO₂ за неделю')}
-          {stat(formatMetric('activeKm', sumMetric(trips, 'activeKm', weekStart)), 'активно')}
-          {stat(String(sumMetric(trips, 'trips', weekStart)), 'эко-поездок')}
+          {stat(s.format.co2(sumMetric(trips, 'co2', weekStart) * 1000), s.goals.statCo2Week)}
+          {stat(formatMetric(s, 'activeKm', sumMetric(trips, 'activeKm', weekStart)), s.goals.statActive)}
+          {stat(String(sumMetric(trips, 'trips', weekStart)), s.goals.statTrips)}
         </View>
       </Card>
 
-      <SectionTitle>Цели на неделю</SectionTitle>
+      <SectionTitle>{s.common.weekGoals}</SectionTitle>
       {goals.map((goal) => (
         <GoalCard
           key={goal.id}
@@ -70,36 +72,36 @@ export default function GoalsScreen() {
           onPress={() => addGoal(kind)}
           style={[styles.addGoal, { borderColor: t.border }]}>
           <Ionicons name="add-circle-outline" size={20} color={t.primary} />
-          <Text style={[styles.addGoalText, { color: t.text }]}>Добавить цель «{METRIC_META[kind].title}»</Text>
+          <Text style={[styles.addGoalText, { color: t.text }]}>{s.goals.addGoal(s.metric[kind])}</Text>
         </Pressable>
       ))}
 
-      <SectionTitle>История поездок</SectionTitle>
+      <SectionTitle>{s.goals.history}</SectionTitle>
       {trips.length === 0 ? (
         <Text style={[styles.empty, { color: t.textSecondary }]}>
-          Пока пусто. Постройте маршрут на вкладке «Маршрут» и запишите поездку.
+          {s.goals.historyEmpty}
         </Text>
       ) : (
         <Card style={styles.history}>
           {trips.slice(0, HISTORY_LIMIT).map((trip, i) => (
             <View key={trip.id} style={[styles.trip, i > 0 && { borderTopColor: t.border, borderTopWidth: StyleSheet.hairlineWidth }]}>
               <View style={[styles.tripIcon, { backgroundColor: t.mode[trip.mode] }]}>
-                <Ionicons name={MODE_META[trip.mode].icon} size={18} color="#FFFFFF" />
+                <ModeIcon mode={trip.mode} size={18} color="#FFFFFF" />
               </View>
               <View style={styles.tripMain}>
                 <Text style={[styles.tripTitle, { color: t.text }]} numberOfLines={2}>
                   {trip.fromName} → {trip.toName}
                 </Text>
                 <Text style={[styles.tripMeta, { color: t.textSecondary }]}>
-                  {formatDate(trip.date)} · {formatDistance(trip.distanceM)}
+                  {s.format.date(trip.date)} · {s.format.distance(trip.distanceM)}
                 </Text>
               </View>
               <Text style={[styles.tripSaved, { color: trip.savedG > 0 ? t.level.low : t.textSecondary }]}>
-                {trip.savedG > 0 ? `−${formatCo2(trip.savedG)}` : `+${formatCo2(trip.co2G)}`}
+                {trip.savedG > 0 ? `−${s.format.co2(trip.savedG)}` : `+${s.format.co2(trip.co2G)}`}
               </Text>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Удалить поездку"
+                accessibilityLabel={s.goals.deleteTrip}
                 onPress={() => removeTrip(trip.id)}
                 hitSlop={10}>
                 <Ionicons name="close" size={18} color={t.textSecondary} />

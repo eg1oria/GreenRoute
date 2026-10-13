@@ -1,11 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Text } from '@/components/Text';
 import { ProgressBar, ScreenTitle } from '@/components/ui';
+import { useStrings } from '@/i18n';
 import { daysLeft, leaderboard } from '@/lib/challenges';
-import { plural } from '@/lib/format';
 import { formatMetric, METRIC_META } from '@/lib/metrics';
 import { useAppStore } from '@/store/AppStore';
 import { CHALLENGES } from '@/store/seed';
@@ -15,13 +16,14 @@ export default function ChallengesScreen() {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const s = useStrings();
   const { trips, memberships } = useAppStore();
 
   return (
     <ScrollView
       style={{ backgroundColor: t.background }}
       contentContainerStyle={[styles.content, { paddingTop: insets.top + 16 }]}>
-      <ScreenTitle title="Челленджи" subtitle="Командные экологические соревнования" />
+      <ScreenTitle title={s.challenges.title} subtitle={s.challenges.subtitle} />
 
       {CHALLENGES.map((challenge) => {
         const rows = leaderboard(challenge, memberships[challenge.id], trips);
@@ -43,32 +45,34 @@ export default function ChallengesScreen() {
                 <Ionicons name={METRIC_META[challenge.metric].icon} size={20} color={t.onAchievement} />
               </View>
               <View style={styles.headerText}>
-                <Text style={[styles.title, { color: t.text }]}>{challenge.title}</Text>
+                <Text style={[styles.title, { color: t.text }]}>{s.challengeText[challenge.id].title}</Text>
                 <Text style={[styles.meta, { color: t.textSecondary }]}>
-                  {challenge.teams.length} {plural(challenge.teams.length, ['команда', 'команды', 'команд'])} · осталось{' '}
-                  {days} {plural(days, ['день', 'дня', 'дней'])}
+                  {s.challenges.meta(challenge.teams.length, days)}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={t.textSecondary} />
             </View>
 
-            <Text style={[styles.description, { color: t.textSecondary }]}>{challenge.description}</Text>
+            <Text style={[styles.description, { color: t.textSecondary }]}>{s.challengeText[challenge.id].description}</Text>
 
             {mine ? (
               <View style={styles.progress}>
                 <View style={styles.progressRow}>
                   <Text style={[styles.team, { color: t.text }]}>
-                    {mine.team.name} · {mine.rank} место
+                    {s.team[mine.team.id]} · {s.challenges.place(mine.rank)}
                   </Text>
                   <Text style={[styles.meta, { color: t.textSecondary }]}>
-                    {formatMetric(challenge.metric, mine.score)} из {formatMetric(challenge.metric, challenge.target)}
+                    {s.common.outOf(
+                      formatMetric(s, challenge.metric, mine.score),
+                      formatMetric(s, challenge.metric, challenge.target),
+                    )}
                   </Text>
                 </View>
                 <ProgressBar progress={mine.score / challenge.target} color={t.accent} />
               </View>
             ) : (
               <View style={[styles.join, { backgroundColor: t.accent }]}>
-                <Text style={[styles.joinText, { color: t.onAccent }]}>Выбрать команду</Text>
+                <Text style={[styles.joinText, { color: t.onAccent }]}>{s.challenges.pickTeam}</Text>
               </View>
             )}
           </Pressable>
@@ -76,7 +80,7 @@ export default function ChallengesScreen() {
       })}
 
       <Text style={[styles.note, { color: t.textSecondary }]}>
-        Команды и их результаты — демонстрационные. Ваш вклад считается по записанным поездкам.
+        {s.challenges.demoNote}
       </Text>
     </ScrollView>
   );

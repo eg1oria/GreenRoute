@@ -4,6 +4,9 @@ import type { Mode } from '@/types';
 export const EMISSION_G_PER_KM: Record<Mode, number> = {
   walk: 0,
   bike: 0,
+  // электросамокат: зарядка и обслуживание проката
+  scooter: 25,
+  metro: 30,
   transit: 60,
   car: 170,
 };
@@ -22,12 +25,6 @@ export function footprintLevel(co2G: number, carCo2G: number): FootprintLevel {
   if (share < 0.7) return 'medium';
   return 'high';
 }
-
-export const LEVEL_LABEL: Record<FootprintLevel, string> = {
-  low: 'Низкий след',
-  medium: 'Средний след',
-  high: 'Высокий след',
-};
 
 // Условные эквиваленты: взрослое дерево поглощает около 22 кг CO₂ в год,
 // одна зарядка смартфона — около 8 г CO₂.

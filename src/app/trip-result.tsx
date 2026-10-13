@@ -1,14 +1,14 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Text } from '@/components/Text';
 import { Button, Card, ProgressBar, SectionTitle } from '@/components/ui';
+import { useStrings } from '@/i18n';
 import { equivalents } from '@/lib/carbon';
 import { challengePeriod } from '@/lib/challenges';
-import { formatCo2, formatDistance, formatDuration, plural } from '@/lib/format';
-import { formatMetric, METRIC_META, metricValue, startOfWeek, sumMetric } from '@/lib/metrics';
-import { MODE_META } from '@/lib/modes';
+import { formatMetric, metricValue, startOfWeek, sumMetric } from '@/lib/metrics';
 import { useAppStore } from '@/store/AppStore';
 import { CHALLENGES } from '@/store/seed';
 import { useTheme } from '@/theme/useTheme';
@@ -17,6 +17,7 @@ export default function TripResultScreen() {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const s = useStrings();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { trips, goals, memberships } = useAppStore();
 
@@ -24,8 +25,8 @@ export default function TripResultScreen() {
   if (!trip) {
     return (
       <View style={[styles.missing, { backgroundColor: t.background }]}>
-        <Text style={{ color: t.textSecondary }}>Поездка не найдена.</Text>
-        <Button title="Закрыть" variant="outline" onPress={() => router.back()} />
+        <Text style={{ color: t.textSecondary }}>{s.trip.notFound}</Text>
+        <Button title={s.common.close} variant="outline" onPress={() => router.back()} />
       </View>
     );
   }
@@ -53,13 +54,13 @@ export default function TripResultScreen() {
             <Ionicons name={eco ? 'leaf' : 'car'} size={36} color={t.onAchievement} />
           </View>
           <Text style={[styles.heroLabel, { color: t.textSecondary }]}>
-            {eco ? 'Вы сэкономили' : 'След этой поездки'}
+            {eco ? s.trip.saved : s.trip.footprint}
           </Text>
           <Text style={[styles.heroValue, { color: t.text }]}>
-            {formatCo2(eco ? trip.savedG : trip.co2G)} CO₂
+            {s.format.co2(eco ? trip.savedG : trip.co2G)} CO₂
           </Text>
           <Text style={[styles.heroMeta, { color: t.textSecondary }]}>
-            {MODE_META[trip.mode].how} · {formatDistance(trip.distanceM)} · {formatDuration(trip.durationS)}
+            {s.mode[trip.mode].how} · {s.format.distance(trip.distanceM)} · {s.format.duration(trip.durationS)}
           </Text>
         </View>
 
@@ -67,63 +68,55 @@ export default function TripResultScreen() {
           <Card style={styles.equivalents}>
             <View style={styles.equivalent}>
               <Ionicons name="leaf-outline" size={22} color={t.primary} />
-              <Text style={[styles.equivalentText, { color: t.text }]}>
-                Столько дерево поглощает за {treeDays} {plural(treeDays, ['день', 'дня', 'дней'])}
-              </Text>
+              <Text style={[styles.equivalentText, { color: t.text }]}>{s.trip.tree(treeDays)}</Text>
             </View>
             <View style={styles.equivalent}>
               <Ionicons name="phone-portrait-outline" size={22} color={t.primary} />
-              <Text style={[styles.equivalentText, { color: t.text }]}>
-                Как {phoneCharges} {plural(phoneCharges, ['зарядка', 'зарядки', 'зарядок'])} смартфона
-              </Text>
+              <Text style={[styles.equivalentText, { color: t.text }]}>{s.trip.phone(phoneCharges)}</Text>
             </View>
-            <Text style={[styles.footnote, { color: t.textSecondary }]}>
-              Сравнение с той же поездкой на авто. Оценки условные.
-            </Text>
+            <Text style={[styles.footnote, { color: t.textSecondary }]}>{s.trip.comparisonNote}</Text>
           </Card>
         ) : (
           <Card>
-            <Text style={[styles.equivalentText, { color: t.text }]}>
-              В следующий раз попробуйте транспорт или велосипед — приложение покажет, сколько CO₂ это сэкономит.
-            </Text>
+            <Text style={[styles.equivalentText, { color: t.text }]}>{s.trip.nextTime}</Text>
           </Card>
         )}
 
-        {affectedGoals.length > 0 && <SectionTitle>Цели на неделю</SectionTitle>}
+        {affectedGoals.length > 0 && <SectionTitle>{s.common.weekGoals}</SectionTitle>}
         {affectedGoals.map((goal) => {
           const value = sumMetric(trips, goal.kind, weekStart);
           const done = value >= goal.target;
           return (
             <Card key={goal.id} style={[styles.goal, done && { backgroundColor: t.achievementSoft, borderColor: t.achievement }]}>
               <View style={styles.goalHeader}>
-                <Text style={[styles.goalTitle, { color: t.text }]}>{METRIC_META[goal.kind].title}</Text>
+                <Text style={[styles.goalTitle, { color: t.text }]}>{s.metric[goal.kind]}</Text>
                 <Text style={[styles.goalDelta, { color: t.level.low }]}>
-                  +{formatMetric(goal.kind, metricValue(trip, goal.kind))}
+                  +{formatMetric(s, goal.kind, metricValue(trip, goal.kind))}
                 </Text>
               </View>
               <ProgressBar progress={value / goal.target} color={done ? t.achievement : t.accent} />
               <Text style={[styles.footnote, { color: t.textSecondary }]}>
-                {done ? 'Цель достигнута · ' : ''}
-                {formatMetric(goal.kind, value)} из {formatMetric(goal.kind, goal.target)}
+                {done ? `${s.common.goalReached} · ` : ''}
+                {s.common.outOf(formatMetric(s, goal.kind, value), formatMetric(s, goal.kind, goal.target))}
               </Text>
             </Card>
           );
         })}
 
-        {teamContributions.length > 0 && <SectionTitle>Вклад в команду</SectionTitle>}
+        {teamContributions.length > 0 && <SectionTitle>{s.trip.teamContribution}</SectionTitle>}
         {teamContributions.map(({ challenge, team, value }) => (
           <Card key={challenge.id} style={styles.contribution}>
             <View style={styles.contributionText}>
-              <Text style={[styles.goalTitle, { color: t.text }]}>{team.name}</Text>
-              <Text style={[styles.footnote, { color: t.textSecondary }]}>{challenge.title}</Text>
+              <Text style={[styles.goalTitle, { color: t.text }]}>{s.team[team.id]}</Text>
+              <Text style={[styles.footnote, { color: t.textSecondary }]}>{s.challengeText[challenge.id].title}</Text>
             </View>
-            <Text style={[styles.goalDelta, { color: t.level.low }]}>+{formatMetric(challenge.metric, value)}</Text>
+            <Text style={[styles.goalDelta, { color: t.level.low }]}>+{formatMetric(s, challenge.metric, value)}</Text>
           </Card>
         ))}
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 10, borderTopColor: t.border }]}>
-        <Button title="Готово" onPress={() => router.back()} />
+        <Button title={s.common.done} onPress={() => router.back()} />
       </View>
     </View>
   );

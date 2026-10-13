@@ -1,12 +1,14 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
+import { useStrings } from '@/i18n';
 import { formatMetric, METRIC_META } from '@/lib/metrics';
 import type { IconName } from '@/lib/modes';
 import { useTheme } from '@/theme/useTheme';
 import type { Goal } from '@/types';
 
 import { ProgressRing } from './ProgressRing';
+import { Text } from './Text';
 
 type Props = {
   goal: Goal;
@@ -18,6 +20,7 @@ type Props = {
 
 export function GoalCard({ goal, value, onAdjust, onRemove }: Props) {
   const t = useTheme();
+  const s = useStrings();
   const meta = METRIC_META[goal.kind];
   const progress = value / goal.target;
   const done = progress >= 1;
@@ -51,17 +54,17 @@ export function GoalCard({ goal, value, onAdjust, onRemove }: Props) {
       <View style={styles.main}>
         <View style={styles.titleRow}>
           <Ionicons name={meta.icon} size={16} color={t.textSecondary} />
-          <Text style={[styles.title, { color: t.text }]}>{meta.title}</Text>
+          <Text style={[styles.title, { color: t.text }]}>{s.metric[goal.kind]}</Text>
         </View>
         <Text style={[styles.value, { color: t.textSecondary }]}>
-          {done ? 'Цель достигнута · ' : ''}
-          {formatMetric(goal.kind, value)} из {formatMetric(goal.kind, goal.target)}
+          {done ? `${s.common.goalReached} · ` : ''}
+          {s.common.outOf(formatMetric(s, goal.kind, value), formatMetric(s, goal.kind, goal.target))}
         </Text>
         <View style={styles.controls}>
-          {control('remove', 'Уменьшить цель', () => onAdjust(-1), goal.target <= meta.min)}
-          {control('add', 'Увеличить цель', () => onAdjust(1))}
+          {control('remove', s.goals.decrease, () => onAdjust(-1), goal.target <= meta.min)}
+          {control('add', s.goals.increase, () => onAdjust(1))}
           <View style={styles.spacer} />
-          {control('trash-outline', 'Удалить цель', onRemove)}
+          {control('trash-outline', s.goals.remove, onRemove)}
         </View>
       </View>
     </View>

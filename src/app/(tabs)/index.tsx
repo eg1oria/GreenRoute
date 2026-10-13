@@ -1,12 +1,14 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
+  PanResponder,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -16,12 +18,13 @@ import { CompareBars } from '@/components/CompareBars';
 import { PlaceSearch } from '@/components/PlaceSearch';
 import { RouteCard } from '@/components/RouteCard';
 import { RouteMap } from '@/components/RouteMap';
+import { Text } from '@/components/Text';
 import { Button, Card } from '@/components/ui';
+import { placeName, useStrings, type Strings } from '@/i18n';
 import { equivalents } from '@/lib/carbon';
-import { formatCo2, plural } from '@/lib/format';
 import { reverseGeocode } from '@/lib/geocoding';
-import { getCurrentPlace, hasLocationPermission } from '@/lib/location';
-import { MODE_META } from '@/lib/modes';
+import { getCurrentPlace, hasLocationPermission, LocationDeniedError } from '@/lib/location';
+import type { IconName } from '@/lib/modes';
 import { buildRoutes, haversineM, recommendedMode, type RoutesResult } from '@/lib/routing';
 import { useAppStore } from '@/store/AppStore';
 import { useTheme } from '@/theme/useTheme';
@@ -30,6 +33,13 @@ import type { LatLng, Mode, Place, RouteOption } from '@/types';
 type Field = 'from' | 'to';
 
 const SEARCH_PANEL_HEIGHT = 112;
+// Заголовок нижней панели — всё, что от неё остаётся, когда она свёрнута
+const SHEET_PEEK_HEIGHT = 60;
+const SHEET_ANIMATION_MS = 220;
+// Доля высоты экрана, которую карта занимает над раскрытой панелью
+const MAP_SHARE = 0.45;
+const SHEET_SWIPE_MIN = 24;
+const MAP_BUTTON_SIZE = 44;
 const MIN_ROUTE_M = 30;
 // Один и тот же пустой массив — чтобы карта не перецентрировалась на каждый рендер
 const NO_ROUTES: RouteOption[] = [];
@@ -38,6 +48,7 @@ export default function RouteScreen() {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const s = useStrings();
   const { height } = useWindowDimensions();
   const { recordTrip } = useAppStore();
 
@@ -48,6 +59,35 @@ export default function RouteScreen() {
   const [selection, setSelection] = useState<{ key: string; mode: Mode } | null>(null);
   const [locationGranted, setLocationGranted] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [fitRequest, setFitRequest] = useState<{ bottomInset: number }>();
+  // Панель маршрутов лежит поверх карты и сворачивается, когда карту трогают
+  const [sheetOpen, setSheetOpen] = useState(true);
+  const [sheetHeight, setSheetHeight] = useState(0);
+  // useAnimatedValue нет в react-native-web
+  const [sheetCollapse] = useState(() => new Animated.Value(0));
+
+  useEffect(() => {
+    Animated.timing(sheetCollapse, {
+      toValue: sheetOpen ? 0 : 1,
+      duration: SHEET_ANIMATION_MS,
+      useNativeDriver: Platform.OS !== 'web',
+    }).start();
+  }, [sheetOpen, sheetCollapse]);
+
+  // Заголовок панели можно и смахнуть: вниз — свернуть, вверх — развернуть
+  const sheetSwipe = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gesture) =>
+          Math.abs(gesture.dy) > 8 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
+        onPanResponderRelease: (_, gesture) => {
+          if (Math.abs(gesture.dy) >= SHEET_SWIPE_MIN) setSheetOpen(gesture.dy < 0);
+        },
+      }),
+    [],
+  );
 
   // Если доступ к геолокации уже выдан — сразу строим маршрут от текущего положения
   useEffect(() => {
@@ -79,7 +119,11 @@ export default function RouteScreen() {
     if (!requestKey || !fromCoord || !toCoord) return;
     const controller = new AbortController();
     buildRoutes(fromCoord, toCoord, controller.signal)
-      .then((next) => setResponse({ key: requestKey, result: next }))
+      .then((next) => {
+        setResponse({ key: requestKey, result: next });
+        // Маршруты построены — показываем их, даже если панель была свёрнута
+        setSheetOpen(true);
+      })
       .catch(() => {});
     return () => controller.abort();
   }, [requestKey, fromCoord, toCoord]);
@@ -103,130 +147,239 @@ export default function RouteScreen() {
     setTo(from);
   };
 
-  // Долгое нажатие на карте ставит точку: сначала «Откуда», если она пуста, иначе «Куда»
-  const dropPin = async (coord: LatLng) => {
-    const fallback: Place = { id: `pin-${coord.latitude},${coord.longitude}`, name: 'Точка на карте', coord };
-    const place = (await reverseGeocode(coord).catch(() => undefined)) ?? fallback;
-    if (!from) setFrom(place);
-    else setTo(place);
+  const routeFromMe = async () => {
+    setLocating(true);
+    setLocationError(null);
+    try {
+      setFrom(await getCurrentPlace());
+      setLocationGranted(true);
+    } catch (error) {
+      setLocationError(
+        error instanceof LocationDeniedError ? s.route.locationDenied : s.route.locationFailed,
+      );
+      setSheetOpen(true);
+    } finally {
+      setLocating(false);
+    }
+  };
+
+  // Нажатие на карте ставит «Откуда», долгое нажатие — «Куда»
+  const dropPin = (key: Field, coord: LatLng, name?: string) => {
+    const pin: Place = { id: `pin-${coord.latitude},${coord.longitude}`, name: name ?? '', coord };
+    const setPlace = key === 'from' ? setFrom : setTo;
+    setPlace(pin);
+    if (name) return;
+    // Точка появляется сразу, адрес подставляем, когда придёт, — если её за это время не заменили
+    reverseGeocode(coord)
+      .then((place) => place && setPlace((current) => (current?.id === pin.id ? place : current)))
+      .catch(() => {});
   };
 
   const selectedRoute = routes.find((route) => route.mode === selected);
   const carCo2G = routes.find((route) => route.mode === 'car')?.co2G ?? 0;
   const savedG = selectedRoute ? Math.max(0, carCo2G - selectedRoute.co2G) : 0;
 
+  const sheetTitle = selectedRoute
+    ? `${s.mode[selectedRoute.mode].label} · ${s.format.duration(selectedRoute.durationS)}`
+    : loading
+      ? s.route.building
+      : s.route.pickPoints;
+
   const record = () => {
     if (!selectedRoute || !from || !to) return;
-    const trip = recordTrip(selectedRoute, carCo2G, from.name, to.name);
+    const trip = recordTrip(selectedRoute, carCo2G, placeName(s, from), placeName(s, to));
     router.push({ pathname: '/trip-result', params: { id: trip.id } });
   };
 
   const field = (key: Field, place: Place | null, placeholder: string, color: string) => (
-    <Pressable accessibilityRole="button" onPress={() => setSearching(key)} style={styles.field}>
-      <View style={[styles.fieldDot, { backgroundColor: color }]} />
-      <Text style={[styles.fieldText, { color: place ? t.text : t.textSecondary }]} numberOfLines={1}>
-        {place?.name ?? placeholder}
-      </Text>
+    <View style={styles.fieldRow}>
+      <Pressable accessibilityRole="button" onPress={() => setSearching(key)} style={styles.field}>
+        <View style={[styles.fieldDot, { backgroundColor: color }]} />
+        <Text style={[styles.fieldText, { color: place ? t.text : t.textSecondary }]} numberOfLines={1}>
+          {place ? placeName(s, place) : placeholder}
+        </Text>
+      </Pressable>
+      {place && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={s.route.clearField(placeholder)}
+          onPress={() => (key === 'from' ? setFrom(null) : setTo(null))}
+          hitSlop={10}>
+          <Ionicons name="close-circle" size={20} color={t.textSecondary} />
+        </Pressable>
+      )}
+    </View>
+  );
+
+  const sheetTranslateY = sheetCollapse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, Math.max(0, sheetHeight - SHEET_PEEK_HEIGHT)],
+  });
+
+  const mapButton = (icon: IconName, label: string, onPress: () => void, busy = false) => (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      disabled={busy}
+      onPress={onPress}
+      style={[styles.mapButton, { backgroundColor: t.card, borderColor: t.border }]}>
+      {busy ? <ActivityIndicator color={t.primary} /> : <Ionicons name={icon} size={22} color={t.text} />}
     </Pressable>
   );
 
   return (
     <View style={[styles.screen, { backgroundColor: t.background }]}>
-      <View style={{ height: Math.round(height * 0.4) }}>
-        <RouteMap
-          from={from}
-          to={to}
-          routes={routes}
-          selected={selected}
-          topInset={insets.top + SEARCH_PANEL_HEIGHT}
-          showsUserLocation={locationGranted}
-          onSelect={setSelected}
-          onLongPress={dropPin}
-        />
-        <View
-          style={[styles.searchPanel, { top: insets.top + 8, backgroundColor: t.card, borderColor: t.border }]}>
-          <View style={styles.fields}>
-            {field('from', from, 'Откуда', t.accent)}
-            <View style={[styles.divider, { backgroundColor: t.border }]} />
-            {field('to', to, 'Куда', t.primary)}
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Поменять местами"
-            onPress={swap}
-            hitSlop={8}
-            style={[styles.swap, { backgroundColor: t.accentSoft }]}>
-            <Ionicons name="swap-vertical" size={20} color={t.text} />
-          </Pressable>
+      <RouteMap
+        from={from}
+        to={to}
+        routes={routes}
+        selected={selected}
+        topInset={insets.top + SEARCH_PANEL_HEIGHT}
+        bottomInset={sheetHeight}
+        peekInset={SHEET_PEEK_HEIGHT}
+        fitRequest={fitRequest}
+        showsUserLocation={locationGranted}
+        onSelect={setSelected}
+        onInteract={() => setSheetOpen(false)}
+        onPress={(coord, name) => dropPin('from', coord, name)}
+        onLongPress={(coord) => dropPin('to', coord)}
+      />
+      <View style={[styles.searchPanel, { top: insets.top + 8, backgroundColor: t.card, borderColor: t.border }]}>
+        <View style={styles.fields}>
+          {field('from', from, s.common.from, t.accent)}
+          <View style={[styles.divider, { backgroundColor: t.border }]} />
+          {field('to', to, s.common.to, t.primary)}
         </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={s.route.swap}
+          onPress={swap}
+          hitSlop={8}
+          style={[styles.swap, { backgroundColor: t.accentSoft }]}>
+          <Ionicons name="swap-vertical" size={20} color={t.text} />
+        </Pressable>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {loading && (
-          <View style={styles.center}>
-            <ActivityIndicator color={t.primary} />
-            <Text style={[styles.hint, { color: t.textSecondary }]}>Строим маршруты…</Text>
-          </View>
-        )}
+      {/* Кнопки карты держатся над панелью и съезжают вместе с ней */}
+      <Animated.View
+        pointerEvents="box-none"
+        style={[styles.mapButtons, { bottom: sheetHeight + 12, transform: [{ translateY: sheetTranslateY }] }]}>
+        {(from || to) &&
+          mapButton('scan-outline', s.route.fitRoute, () =>
+            setFitRequest({ bottomInset: sheetOpen ? sheetHeight : SHEET_PEEK_HEIGHT }),
+          )}
+        {mapButton('locate', s.route.fromMyLocation, routeFromMe, locating)}
+      </Animated.View>
 
-        {!loading && !result && (
-          <Card style={styles.intro}>
-            <Text style={[styles.introTitle, { color: t.text }]}>
-              {tooClose ? 'Точки совпадают' : 'Куда отправимся?'}
-            </Text>
-            <Text style={[styles.hint, { color: t.textSecondary }]}>
-              {tooClose
-                ? 'Выберите другую точку назначения — эта слишком близко к началу маршрута.'
-                : 'Укажите, откуда и куда — сравним пеший маршрут, велосипед и транспорт по времени и углеродному следу. Точку можно поставить и долгим нажатием на карте.'}
-            </Text>
-          </Card>
-        )}
+      <Animated.View
+        onLayout={(event) => setSheetHeight(event.nativeEvent.layout.height)}
+        style={[
+          styles.sheet,
+          {
+            top: Math.round(height * MAP_SHARE),
+            backgroundColor: t.background,
+            borderColor: t.border,
+            transform: [{ translateY: sheetTranslateY }],
+          },
+        ]}>
+        <View {...sheetSwipe.panHandlers}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={sheetOpen ? s.route.collapseSheet : s.route.expandSheet}
+            onPress={() => setSheetOpen(!sheetOpen)}
+            style={styles.sheetHeader}>
+            <View style={[styles.grabber, { backgroundColor: t.border }]} />
+            <View style={styles.sheetTitleRow}>
+              <Text style={[styles.sheetTitle, { color: t.text }]} numberOfLines={1}>
+                {sheetTitle}
+              </Text>
+              <Ionicons name={sheetOpen ? 'chevron-down' : 'chevron-up'} size={20} color={t.textSecondary} />
+            </View>
+          </Pressable>
+        </View>
 
-        {result?.offline && (
-          <Card style={[styles.notice, { borderColor: t.level.medium }]}>
-            <Text style={[styles.noticeText, { color: t.text }]}>
-              Нет связи с сервисом маршрутов — показаны примерные оценки по прямой.
-            </Text>
-            <Pressable accessibilityRole="button" onPress={() => setAttempt((n) => n + 1)} hitSlop={8}>
-              <Text style={[styles.retry, { color: t.primary }]}>Повторить</Text>
-            </Pressable>
-          </Card>
-        )}
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          {loading && (
+            <View style={styles.center}>
+              <ActivityIndicator color={t.primary} />
+              <Text style={[styles.hint, { color: t.textSecondary }]}>{s.route.building}</Text>
+            </View>
+          )}
 
-        {routes.map((route) => (
-          <RouteCard
-            key={route.mode}
-            route={route}
-            carCo2G={carCo2G}
-            selected={route.mode === selected}
-            recommended={route.mode === recommended}
-            onPress={() => setSelected(route.mode)}
-          />
-        ))}
+          {!loading && !result && (
+            <Card style={styles.intro}>
+              <Text style={[styles.introTitle, { color: t.text }]}>
+                {tooClose ? s.route.samePoints : s.route.introTitle}
+              </Text>
+              <Text style={[styles.hint, { color: t.textSecondary }]}>
+                {tooClose ? s.route.samePointsHint : s.route.introHint}
+              </Text>
+            </Card>
+          )}
+
+          {locationError && (
+            <Card style={[styles.notice, { borderColor: t.level.medium }]}>
+              <Text style={[styles.noticeText, { color: t.text }]}>{locationError}</Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={s.route.hideMessage}
+                onPress={() => setLocationError(null)}
+                hitSlop={8}>
+                <Ionicons name="close" size={18} color={t.textSecondary} />
+              </Pressable>
+            </Card>
+          )}
+
+          {result?.offline && (
+            <Card style={[styles.notice, { borderColor: t.level.medium }]}>
+              <Text style={[styles.noticeText, { color: t.text }]}>
+                {s.route.offline}
+              </Text>
+              <Pressable accessibilityRole="button" onPress={() => setAttempt((n) => n + 1)} hitSlop={8}>
+                <Text style={[styles.retry, { color: t.primary }]}>{s.common.retry}</Text>
+              </Pressable>
+            </Card>
+          )}
+
+          {routes.map((route) => (
+            <RouteCard
+              key={route.mode}
+              route={route}
+              carCo2G={carCo2G}
+              selected={route.mode === selected}
+              recommended={route.mode === recommended}
+              onPress={() => setSelected(route.mode)}
+            />
+          ))}
+
+          {selectedRoute && (
+            <Card style={[styles.effect, { backgroundColor: t.accentSoft, borderColor: t.accent }]}>
+              <Ionicons name="leaf" size={22} color={t.primary} />
+              <Text style={[styles.effectText, { color: t.text }]}>
+                {selectedRoute.mode === 'car'
+                  ? s.route.carEffect(s.format.co2(selectedRoute.co2G))
+                  : s.route.savedEffect(
+                      s.mode[selectedRoute.mode].how,
+                      s.format.co2(savedG),
+                      effectEquivalent(s, savedG),
+                    )}
+              </Text>
+            </Card>
+          )}
+
+          {result && <CompareBars routes={routes} selected={selected} />}
+        </ScrollView>
 
         {selectedRoute && (
-          <Card style={[styles.effect, { backgroundColor: t.accentSoft, borderColor: t.accent }]}>
-            <Ionicons name="leaf" size={22} color={t.primary} />
-            <Text style={[styles.effectText, { color: t.text }]}>
-              {selectedRoute.mode === 'car'
-                ? `На авто эта поездка даст ${formatCo2(selectedRoute.co2G)} CO₂ — больше, чем любой другой способ.`
-                : `${MODE_META[selectedRoute.mode].how} вы сэкономите ${formatCo2(savedG)} CO₂ по сравнению с авто — ${effectEquivalent(savedG)}.`}
-            </Text>
-          </Card>
+          <View style={[styles.footer, { backgroundColor: t.background, borderTopColor: t.border }]}>
+            <Button title={s.route.record} icon="checkmark-circle" onPress={record} />
+          </View>
         )}
-
-        {result && <CompareBars routes={routes} selected={selected} />}
-      </ScrollView>
-
-      {selectedRoute && (
-        <View style={[styles.footer, { backgroundColor: t.background, borderTopColor: t.border }]}>
-          <Button title="Записать поездку" icon="checkmark-circle" onPress={record} />
-        </View>
-      )}
+      </Animated.View>
 
       <PlaceSearch
         visible={searching !== null}
-        title={searching === 'from' ? 'Откуда' : 'Куда'}
+        title={searching === 'from' ? s.common.from : s.common.to}
         near={from?.coord ?? to?.coord}
         onPick={pickPlace}
         onClose={() => setSearching(null)}
@@ -235,16 +388,32 @@ export default function RouteScreen() {
   );
 }
 
-function effectEquivalent(savedG: number): string {
+function effectEquivalent(s: Strings, savedG: number): string {
   const { treeDays, phoneCharges } = equivalents(savedG);
-  if (treeDays >= 1) {
-    return `столько дерево поглощает за ${treeDays} ${plural(treeDays, ['день', 'дня', 'дней'])}`;
-  }
-  return `как ${phoneCharges} ${plural(phoneCharges, ['зарядка', 'зарядки', 'зарядок'])} смартфона`;
+  return treeDays >= 1 ? s.route.treeEquivalent(treeDays) : s.route.phoneEquivalent(phoneCharges);
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
+  screen: {
+    flex: 1,
+    // Свёрнутая панель уезжает за нижний край. В браузере hidden всё равно даёт прокрутить к ней экран
+    // (например, фокусом с клавиатуры), clip — нет
+    overflow: Platform.OS === 'web' ? ('clip' as 'hidden') : 'hidden',
+  },
+  sheet: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
+  },
+  sheetHeader: { height: SHEET_PEEK_HEIGHT, paddingHorizontal: 16, paddingTop: 8, gap: 8 },
+  grabber: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2 },
+  sheetTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sheetTitle: { flex: 1, fontSize: 16, fontWeight: '700' },
   searchPanel: {
     position: 'absolute',
     left: 16,
@@ -263,12 +432,27 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   fields: { flex: 1 },
-  field: { height: 48, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  fieldRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  field: { flex: 1, height: 48, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  mapButtons: { position: 'absolute', right: 16, gap: 8 },
+  mapButton: {
+    width: MAP_BUTTON_SIZE,
+    height: MAP_BUTTON_SIZE,
+    borderRadius: MAP_BUTTON_SIZE / 2,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
   fieldDot: { width: 10, height: 10, borderRadius: 5 },
   fieldText: { flex: 1, fontSize: 16 },
   divider: { height: StyleSheet.hairlineWidth, marginLeft: 20 },
   swap: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  content: { padding: 16, gap: 12 },
+  content: { padding: 16, paddingTop: 4, gap: 12 },
   center: { alignItems: 'center', gap: 10, paddingVertical: 32 },
   intro: { gap: 8 },
   introTitle: { fontSize: 20, fontWeight: '700' },

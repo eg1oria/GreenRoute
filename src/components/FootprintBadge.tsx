@@ -1,14 +1,18 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { LEVEL_LABEL, type FootprintLevel } from '@/lib/carbon';
+import { useStrings } from '@/i18n';
+import type { FootprintLevel } from '@/lib/carbon';
 import { useTheme } from '@/theme/useTheme';
+
+import { Text } from './Text';
 
 export function FootprintBadge({ level }: { level: FootprintLevel }) {
   const t = useTheme();
+  const s = useStrings();
   return (
     <View style={styles.badge}>
       <View style={[styles.dot, { backgroundColor: t.level[level] }]} />
-      <Text style={[styles.label, { color: t.textSecondary }]}>{LEVEL_LABEL[level]}</Text>
+      <Text style={[styles.label, { color: t.textSecondary }]}>{s.level[level]}</Text>
     </View>
   );
 }

@@ -19,5 +19,5 @@ export async function getCurrentPlace(): Promise<Place> {
   const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
   const coord = { latitude: position.coords.latitude, longitude: position.coords.longitude };
   const address = await reverseGeocode(coord).catch(() => undefined);
-  return { id: 'me', name: 'Моё местоположение', subtitle: address?.name, coord };
+  return { id: 'me', name: '', subtitle: address?.name, coord };
 }

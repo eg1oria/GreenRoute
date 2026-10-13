@@ -1,13 +1,13 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
+import { useStrings } from '@/i18n';
 import { footprintLevel } from '@/lib/carbon';
-import { formatCo2, formatDistance, formatDuration } from '@/lib/format';
-import { MODE_META } from '@/lib/modes';
 import { useTheme } from '@/theme/useTheme';
 import type { RouteOption } from '@/types';
 
 import { FootprintBadge } from './FootprintBadge';
+import { ModeIcon } from './ModeIcon';
+import { Text } from './Text';
 
 type Props = {
   route: RouteOption;
@@ -19,7 +19,7 @@ type Props = {
 
 export function RouteCard({ route, carCo2G, selected, recommended, onPress }: Props) {
   const t = useTheme();
-  const meta = MODE_META[route.mode];
+  const s = useStrings();
   const savedG = carCo2G - route.co2G;
 
   return (
@@ -32,29 +32,34 @@ export function RouteCard({ route, carCo2G, selected, recommended, onPress }: Pr
         { backgroundColor: selected ? t.accentSoft : t.card, borderColor: selected ? t.accent : t.border },
       ]}>
       <View style={[styles.icon, { backgroundColor: t.mode[route.mode] }]}>
-        <Ionicons name={meta.icon} size={22} color="#FFFFFF" />
+        <ModeIcon mode={route.mode} size={22} color="#FFFFFF" />
       </View>
 
       <View style={styles.main}>
         <View style={styles.titleRow}>
-          <Text style={[styles.title, { color: t.text }]}>{meta.label}</Text>
+          <Text style={[styles.title, { color: t.text }]}>{s.mode[route.mode].label}</Text>
           {recommended && (
             <View style={[styles.tag, { backgroundColor: t.accent }]}>
-              <Text style={[styles.tagText, { color: t.onAccent }]}>Советуем</Text>
+              <Text style={[styles.tagText, { color: t.onAccent }]}>{s.route.recommended}</Text>
             </View>
           )}
-          {route.estimated && <Text style={[styles.estimate, { color: t.textSecondary }]}>≈ оценка</Text>}
+          {route.estimated && <Text style={[styles.estimate, { color: t.textSecondary }]}>{s.route.estimate}</Text>}
         </View>
         <Text style={[styles.meta, { color: t.textSecondary }]}>
-          {formatDistance(route.distanceM)} · {formatCo2(route.co2G)} CO₂
+          {s.format.distance(route.distanceM)} · {s.format.co2(route.co2G)} CO₂
         </Text>
+        {route.metroStations && (
+          <Text style={[styles.meta, { color: t.textSecondary }]} numberOfLines={2}>
+            {route.metroStations.map((id) => s.metroStation[id]).join(' → ')}
+          </Text>
+        )}
         <FootprintBadge level={footprintLevel(route.co2G, carCo2G)} />
       </View>
 
       <View style={styles.side}>
-        <Text style={[styles.duration, { color: t.text }]}>{formatDuration(route.durationS)}</Text>
+        <Text style={[styles.duration, { color: t.text }]}>{s.format.duration(route.durationS)}</Text>
         {route.mode !== 'car' && savedG > 0 && (
-          <Text style={[styles.saved, { color: t.level.low }]}>−{formatCo2(savedG)}</Text>
+          <Text style={[styles.saved, { color: t.level.low }]}>−{s.format.co2(savedG)}</Text>
         )}
       </View>
     </Pressable>

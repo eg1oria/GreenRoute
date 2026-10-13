@@ -1,9 +1,26 @@
-export type Mode = 'walk' | 'bike' | 'transit' | 'car';
+export type MetroStationId =
+  | 'raiymbek'
+  | 'zhibek'
+  | 'almaly'
+  | 'abay'
+  | 'baikonur'
+  | 'auezov'
+  | 'alatau'
+  | 'sairan'
+  | 'moskva'
+  | 'saryarka'
+  | 'momyshuly';
+
+export type ChallengeId = 'car-free-week' | 'active-500' | 'minus-50';
+export type TeamId = 'sneakers' | 'velodvor' | 'tram' | 'tailwind' | 'quiet';
+
+export type Mode = 'walk' | 'bike' | 'scooter' | 'metro' | 'transit' | 'car';
 
 export type LatLng = { latitude: number; longitude: number };
 
 export type Place = {
   id: string;
+  /** пусто, если своего названия нет — тогда его подставляет placeName на языке интерфейса */
   name: string;
   subtitle?: string;
   coord: LatLng;
@@ -15,6 +32,8 @@ export type RouteOption = {
   durationS: number;
   co2G: number;
   path: LatLng[];
+  /** для метро: станции посадки и выхода */
+  metroStations?: [MetroStationId, MetroStationId];
   /** true, если маршрут не получен от роутинга, а оценён расчётно */
   estimated: boolean;
 };
@@ -41,18 +60,16 @@ export type Goal = {
   target: number;
 };
 
+/** Названия команд и челленджей — в словарях src/i18n */
 export type Team = {
-  id: string;
-  name: string;
+  id: TeamId;
   members: number;
   /** прирост очков демо-команды в день */
   dailyRate: number;
 };
 
 export type Challenge = {
-  id: string;
-  title: string;
-  description: string;
+  id: ChallengeId;
   metric: MetricKind;
   period: 'week' | 'month';
   /** цель команды за период */

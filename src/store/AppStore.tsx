@@ -20,6 +20,7 @@ type Action =
   | { type: 'hydrate'; state: Partial<PersistedState> | null }
   | { type: 'addTrip'; trip: Trip }
   | { type: 'removeTrip'; id: string }
+  | { type: 'clearTrips' }
   | { type: 'addGoal'; kind: MetricKind }
   | { type: 'removeGoal'; id: string }
   | { type: 'adjustGoal'; id: string; direction: 1 | -1 }
@@ -36,6 +37,8 @@ function reducer(state: State, action: Action): State {
       return { ...state, trips: [action.trip, ...state.trips] };
     case 'removeTrip':
       return { ...state, trips: state.trips.filter((trip) => trip.id !== action.id) };
+    case 'clearTrips':
+      return { ...state, trips: [] };
     case 'addGoal':
       if (state.goals.some((goal) => goal.kind === action.kind)) return state;
       return {
@@ -71,6 +74,7 @@ function reducer(state: State, action: Action): State {
 type Store = State & {
   recordTrip: (route: RouteOption, carCo2G: number, fromName: string, toName: string) => Trip;
   removeTrip: (id: string) => void;
+  clearTrips: () => void;
   addGoal: (kind: MetricKind) => void;
   removeGoal: (id: string) => void;
   adjustGoal: (id: string, direction: 1 | -1) => void;
@@ -113,6 +117,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         return trip;
       },
       removeTrip: (id: string) => dispatch({ type: 'removeTrip', id }),
+      clearTrips: () => dispatch({ type: 'clearTrips' }),
       addGoal: (kind: MetricKind) => dispatch({ type: 'addGoal', kind }),
       removeGoal: (id: string) => dispatch({ type: 'removeGoal', id }),
       adjustGoal: (id: string, direction: 1 | -1) => dispatch({ type: 'adjustGoal', id, direction }),

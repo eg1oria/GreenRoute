@@ -1,6 +1,7 @@
 import type { LatLng, Mode, RouteOption } from '@/types';
 
 import { co2Grams } from './carbon';
+import { METRO_LINE } from './metro';
 
 const OSRM_URL = 'https://routing.openstreetmap.de';
 const OSRM_PROFILE = { walk: 'routed-foot', bike: 'routed-bike', car: 'routed-car' } as const;
@@ -15,11 +16,22 @@ const TRANSIT_DETOUR = 1.15;
 const TRANSIT_SPEED_KMH = 22;
 const TRANSIT_OVERHEAD_S = 8 * 60;
 
+// Электросамокат едет по веломаршруту, но быстрее; плюс время на аренду и парковку.
+const SCOOTER_SPEED_KMH = 18;
+const SCOOTER_OVERHEAD_S = 2 * 60;
+
+// Метро: пешком до ближайшей станции, поезд, пешком от станции. Скорость — с учётом остановок,
+// накладные — спуск, ожидание поезда и подъём.
+const METRO_SPEED_KMH = 36;
+const METRO_OVERHEAD_S = 10 * 60;
+// Если до станции по прямой дальше — метро не предлагаем
+const METRO_MAX_WALK_M = 1500;
+
 // Запасной расчёт по прямой, когда роутинг недоступен.
 const FALLBACK_DETOUR = 1.3;
 const FALLBACK_SPEED_KMH: Record<RoutedMode, number> = { walk: 4.8, bike: 15, car: 28 };
 
-type RawRoute = { distanceM: number; durationS: number; path: LatLng[]; estimated: boolean };
+type RawRoute = Omit<RouteOption, 'mode' | 'co2G'>;
 
 export function haversineM(a: LatLng, b: LatLng): number {
   const R = 6371000;
@@ -30,6 +42,14 @@ export function haversineM(a: LatLng, b: LatLng): number {
     Math.sin(dLat / 2) ** 2 +
     Math.cos(toRad(a.latitude)) * Math.cos(toRad(b.latitude)) * Math.sin(dLon / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+/** Углы окрестности точки — чтобы показать на карте одну точку, а не только маршрут. */
+export function aroundPoint(point: LatLng, marginDeg = 0.006): LatLng[] {
+  return [
+    { latitude: point.latitude - marginDeg, longitude: point.longitude - marginDeg },
+    { latitude: point.latitude + marginDeg, longitude: point.longitude + marginDeg },
+  ];
 }
 
 function thin(path: LatLng[]): LatLng[] {
@@ -75,8 +95,41 @@ function straightLine(mode: RoutedMode, from: LatLng, to: LatLng): RawRoute {
   };
 }
 
-function toOption(mode: Mode, raw: RawRoute): RouteOption {
-  return { mode, ...raw, co2G: co2Grams(mode, raw.distanceM) };
+/** emittingM — часть пути, на которой есть выбросы, если это не весь маршрут */
+function toOption(mode: Mode, raw: RawRoute, emittingM = raw.distanceM): RouteOption {
+  return { mode, ...raw, co2G: co2Grams(mode, emittingM) };
+}
+
+function nearestStation(point: LatLng) {
+  const distances = METRO_LINE.map((station) => haversineM(point, station.coord));
+  const distanceM = Math.min(...distances);
+  return { index: distances.indexOf(distanceM), distanceM };
+}
+
+function metroRoute(from: LatLng, to: LatLng): { route: RawRoute; rideM: number } | null {
+  const board = nearestStation(from);
+  const exit = nearestStation(to);
+  if (board.index === exit.index) return null;
+  if (board.distanceM > METRO_MAX_WALK_M || exit.distanceM > METRO_MAX_WALK_M) return null;
+
+  const stops =
+    board.index < exit.index
+      ? METRO_LINE.slice(board.index, exit.index + 1)
+      : METRO_LINE.slice(exit.index, board.index + 1).reverse();
+  const rideM = stops.slice(1).reduce((sum, stop, i) => sum + haversineM(stops[i].coord, stop.coord), 0);
+  const walkM = (board.distanceM + exit.distanceM) * FALLBACK_DETOUR;
+
+  return {
+    rideM,
+    route: {
+      distanceM: walkM + rideM,
+      durationS:
+        (walkM / 1000 / FALLBACK_SPEED_KMH.walk) * 3600 + (rideM / 1000 / METRO_SPEED_KMH) * 3600 + METRO_OVERHEAD_S,
+      path: [from, ...stops.map((stop) => stop.coord), to],
+      estimated: true,
+      metroStations: [stops[0].id, stops[stops.length - 1].id],
+    },
+  };
 }
 
 export type RoutesResult = {
@@ -94,6 +147,18 @@ export async function buildRoutes(from: LatLng, to: LatLng, signal: AbortSignal)
     result.status === 'fulfilled' ? result.value : straightLine(routed[i], from, to),
   );
 
+  const scooter: RawRoute = {
+    distanceM: bike.distanceM,
+    durationS: bike.durationS * (FALLBACK_SPEED_KMH.bike / SCOOTER_SPEED_KMH) + SCOOTER_OVERHEAD_S,
+    path: bike.path,
+    estimated: true,
+  };
+
+  // Если пешком быстрее, чем через метро, — метро не по пути
+  const metro = metroRoute(from, to);
+  const metroOptions =
+    metro && metro.route.durationS < walk.durationS ? [toOption('metro', metro.route, metro.rideM)] : [];
+
   const transitDistanceM = car.distanceM * TRANSIT_DETOUR;
   const transit: RawRoute = {
     distanceM: transitDistanceM,
@@ -103,15 +168,24 @@ export async function buildRoutes(from: LatLng, to: LatLng, signal: AbortSignal)
   };
 
   return {
-    routes: [toOption('walk', walk), toOption('bike', bike), toOption('transit', transit), toOption('car', car)],
+    routes: [
+      toOption('walk', walk),
+      toOption('bike', bike),
+      toOption('scooter', scooter),
+      ...metroOptions,
+      toOption('transit', transit),
+      toOption('car', car),
+    ],
     offline: settled.some((result) => result.status === 'rejected'),
   };
 }
 
 /** Самый экологичный способ, который ещё разумен по времени. */
 export function recommendedMode(routes: RouteOption[]): Mode {
-  const byMode = Object.fromEntries(routes.map((r) => [r.mode, r])) as Record<Mode, RouteOption>;
-  if (byMode.walk.durationS <= 20 * 60) return 'walk';
-  if (byMode.bike.durationS <= 40 * 60) return 'bike';
-  return 'transit';
+  // Метро есть не для каждого маршрута
+  const duration = (mode: Mode) => routes.find((route) => route.mode === mode)?.durationS ?? Infinity;
+  if (duration('walk') <= 20 * 60) return 'walk';
+  if (duration('bike') <= 40 * 60) return 'bike';
+  // Дальше — что быстрее из метро и наземного транспорта; при равенстве метро, у него след ниже
+  return duration('metro') <= duration('transit') ? 'metro' : 'transit';
 }
