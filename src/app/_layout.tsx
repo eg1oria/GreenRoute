@@ -44,6 +44,7 @@ function RootNavigator() {
         }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="challenge/[id]" options={{ title: s.challenge.screenTitle }} />
+        <Stack.Screen name="news/[id]" options={{ title: s.news.detailsTitle }} />
         <Stack.Screen name="trip-result" options={{ presentation: 'modal', headerShown: false }} />
       </Stack>
       <StatusBar style={t.dark ? 'light' : 'dark'} />

@@ -84,7 +84,7 @@ export const en: Strings = {
     weekGoals: 'Weekly goals',
     outOf: (value, target) => `${value} of ${target}`,
   },
-  tabs: { route: 'Route', goals: 'Goals', challenges: 'Challenges', settings: 'Settings' },
+  tabs: { route: 'Route', goals: 'Goals', challenges: 'Challenges', news: 'News', settings: 'Settings' },
   route: {
     locationDenied: 'No access to location. Allow it in your phone settings or pick a point on the map.',
     locationFailed: "Couldn't determine your location. Pick a point on the map.",
@@ -169,6 +169,18 @@ export const en: Strings = {
     comparisonNote: 'Compared with the same trip by car. Estimates are approximate.',
     nextTime: 'Next time try the metro, a scooter or a bike — the app will show how much CO₂ that saves.',
     teamContribution: 'Team contribution',
+  },
+  news: {
+    title: 'News',
+    subtitle: 'Announcements loaded from a REST API',
+    searchPlaceholder: 'Search by title',
+    loadError: "Couldn't load data",
+    empty: 'No news yet',
+    nothingFound: (query) => `Nothing found for “${query}”`,
+    offlineCache: 'No connection — showing saved news',
+    detailsTitle: 'News',
+    author: (id) => `Author #${id}`,
+    notFound: 'News item not found',
   },
   settings: {
     title: 'Settings',

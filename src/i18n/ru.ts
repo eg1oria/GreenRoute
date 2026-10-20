@@ -96,7 +96,7 @@ export const ru = {
     weekGoals: 'Цели на неделю',
     outOf: (value: string, target: string) => `${value} из ${target}`,
   },
-  tabs: { route: 'Маршрут', goals: 'Цели', challenges: 'Челленджи', settings: 'Настройки' },
+  tabs: { route: 'Маршрут', goals: 'Цели', challenges: 'Челленджи', news: 'Новости', settings: 'Настройки' },
   route: {
     locationDenied: 'Нет доступа к геолокации. Разрешите его в настройках телефона или выберите точку на карте.',
     locationFailed: 'Не удалось определить местоположение. Выберите точку на карте.',
@@ -183,6 +183,18 @@ export const ru = {
     nextTime:
       'В следующий раз попробуйте метро, самокат или велосипед — приложение покажет, сколько CO₂ это сэкономит.',
     teamContribution: 'Вклад в команду',
+  },
+  news: {
+    title: 'Новости',
+    subtitle: 'Объявления, загруженные из REST API',
+    searchPlaceholder: 'Поиск по заголовку',
+    loadError: 'Не удалось загрузить данные',
+    empty: 'Новостей пока нет',
+    nothingFound: (query: string) => `По запросу «${query}» ничего не найдено`,
+    offlineCache: 'Нет сети — показаны сохранённые новости',
+    detailsTitle: 'Новость',
+    author: (id: number) => `Автор №${id}`,
+    notFound: 'Новость не найдена',
   },
   settings: {
     title: 'Настройки',

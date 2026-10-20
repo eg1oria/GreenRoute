@@ -10,8 +10,10 @@ import { useTheme } from '@/theme/useTheme';
 
 // Выше стандартной: под иконкой-«пилюлей» должна помещаться подпись
 const TAB_BAR_HEIGHT = 62;
-// Подписи вкладок растут вместе со шрифтом только до этого предела — дальше они не помещаются
-const MAX_LABEL_SCALE = 1.15;
+// С пятью вкладками на подпись остаётся ~65 pt ширины на телефоне 375 pt — отсюда размер 10 (как в iOS)
+const TAB_LABEL_SIZE = 10;
+// Подписи вкладок растут вместе со шрифтом только до этого предела — дальше «Челленджи» не помещается
+const MAX_LABEL_SCALE = 1.05;
 
 export default function TabsLayout() {
   const t = useTheme();
@@ -43,12 +45,13 @@ export default function TabsLayout() {
           height: TAB_BAR_HEIGHT + insets.bottom,
           paddingTop: 6,
         },
-        tabBarLabelStyle: { fontSize: 11 * Math.min(fontScale, MAX_LABEL_SCALE), fontWeight: '600' },
+        tabBarLabelStyle: { fontSize: TAB_LABEL_SIZE * Math.min(fontScale, MAX_LABEL_SCALE), fontWeight: '600' },
       }}>
       <Tabs.Screen name="index" options={{ title: s.tabs.route, tabBarIcon: icon('navigate') }} />
       <Tabs.Screen name="goals" options={{ title: s.tabs.goals, tabBarIcon: icon('flag') }} />
       <Tabs.Screen name="challenges" options={{ title: s.tabs.challenges, tabBarIcon: icon('people') }} />
-        <Tabs.Screen name="settings" options={{ title: s.tabs.settings, tabBarIcon: icon('settings') }} />
+      <Tabs.Screen name="news" options={{ title: s.tabs.news, tabBarIcon: icon('newspaper') }} />
+      <Tabs.Screen name="settings" options={{ title: s.tabs.settings, tabBarIcon: icon('settings') }} />
     </Tabs>
   );
 }
