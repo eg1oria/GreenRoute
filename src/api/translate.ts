@@ -8,7 +8,8 @@ const TRANSLATE_URL = 'https://api.mymemory.translated.net/get';
 /** Язык, на котором приходят новости */
 export const SOURCE_LANGUAGE: Language = 'en';
 
-const CACHE_KEY = 'greenroute/translations/v1';
+// v2: в v1 на iOS попадали испорченные переводы — см. комментарий у запроса в translateSentence
+const CACHE_KEY = 'greenroute/translations/v2';
 const SAVE_DELAY_MS = 500;
 
 type MyMemoryResponse = {
@@ -61,7 +62,10 @@ async function translateSentence(sentence: string, target: Language, signal?: Ab
   const key = target + '\n' + sentence;
   if (saved[key]) return saved[key];
 
-  const url = `${TRANSLATE_URL}?q=${encodeURIComponent(sentence)}&langpair=${SOURCE_LANGUAGE}|${target}`;
+  // Кодируем все параметры, включая «|»: увидев в адресе незакодированный символ, iOS кодирует весь URL
+  // заново — %20 превращается в %2520, и переводчику уходит буквальный текст «His%20mother»
+  const langpair = encodeURIComponent(`${SOURCE_LANGUAGE}|${target}`);
+  const url = `${TRANSLATE_URL}?q=${encodeURIComponent(sentence)}&langpair=${langpair}`;
   const response = await fetch(url, { signal });
   if (!response.ok) throw new Error('HTTP ' + response.status);
   const data: MyMemoryResponse = await response.json();
