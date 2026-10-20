@@ -17,7 +17,7 @@ type PersistedState = {
 type State = PersistedState & { hydrated: boolean };
 
 type Action =
-  | { type: 'hydrate'; state: Partial<PersistedState> | null }
+  | { type: 'hydrate'; state: Partial<PersistedState> }
   | { type: 'addTrip'; trip: Trip }
   | { type: 'removeTrip'; id: string }
   | { type: 'clearTrips' }
@@ -28,6 +28,20 @@ type Action =
   | { type: 'leaveChallenge'; challengeId: string };
 
 const initialState: State = { trips: [], goals: DEFAULT_GOALS, memberships: {}, hydrated: false };
+
+// В хранилище может лежать что угодно (старая версия, ручная правка) — поля неверного типа заменяем дефолтом
+function parse(raw: string | null): Partial<PersistedState> {
+  const saved: unknown = raw ? JSON.parse(raw) : null;
+  if (!saved || typeof saved !== 'object') return {};
+  const { trips, goals, memberships } = saved as Record<string, unknown>;
+  const state: Partial<PersistedState> = {};
+  if (Array.isArray(trips)) state.trips = trips;
+  if (Array.isArray(goals)) state.goals = goals;
+  if (typeof memberships === 'object' && memberships !== null && !Array.isArray(memberships)) {
+    state.memberships = memberships as PersistedState['memberships'];
+  }
+  return state;
+}
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -89,8 +103,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY)
-      .then((raw) => dispatch({ type: 'hydrate', state: raw ? JSON.parse(raw) : null }))
-      .catch(() => dispatch({ type: 'hydrate', state: null }));
+      .then((raw) => dispatch({ type: 'hydrate', state: parse(raw) }))
+      .catch(() => dispatch({ type: 'hydrate', state: {} }));
   }, []);
 
   const { hydrated, ...persisted } = state;

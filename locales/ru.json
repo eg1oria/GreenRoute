@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSLocationWhenInUseUsageDescription": "GreenRoute использует ваше местоположение, чтобы строить маршрут от точки, где вы находитесь."
+  }
+}

@@ -65,17 +65,22 @@ export default function TripResultScreen() {
         </View>
 
         {eco ? (
-          <Card style={styles.equivalents}>
-            <View style={styles.equivalent}>
-              <Ionicons name="leaf-outline" size={22} color={t.primary} />
-              <Text style={[styles.equivalentText, { color: t.text }]}>{s.trip.tree(treeDays)}</Text>
-            </View>
-            <View style={styles.equivalent}>
-              <Ionicons name="phone-portrait-outline" size={22} color={t.primary} />
-              <Text style={[styles.equivalentText, { color: t.text }]}>{s.trip.phone(phoneCharges)}</Text>
-            </View>
-            <Text style={[styles.footnote, { color: t.textSecondary }]}>{s.trip.comparisonNote}</Text>
-          </Card>
+          // У короткой поездки экономия меньше суток работы дерева или одной зарядки — «0 дней» не показываем
+          phoneCharges >= 1 && (
+            <Card style={styles.equivalents}>
+              {treeDays >= 1 && (
+                <View style={styles.equivalent}>
+                  <Ionicons name="leaf-outline" size={22} color={t.primary} />
+                  <Text style={[styles.equivalentText, { color: t.text }]}>{s.trip.tree(treeDays)}</Text>
+                </View>
+              )}
+              <View style={styles.equivalent}>
+                <Ionicons name="phone-portrait-outline" size={22} color={t.primary} />
+                <Text style={[styles.equivalentText, { color: t.text }]}>{s.trip.phone(phoneCharges)}</Text>
+              </View>
+              <Text style={[styles.footnote, { color: t.textSecondary }]}>{s.trip.comparisonNote}</Text>
+            </Card>
+          )
         ) : (
           <Card>
             <Text style={[styles.equivalentText, { color: t.text }]}>{s.trip.nextTime}</Text>

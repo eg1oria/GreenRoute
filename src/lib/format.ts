@@ -25,12 +25,15 @@ export function createFormat({ decimal, units, months, monthFirst }: FormatConfi
       const m = minutes % 60;
       return m === 0 ? `${h} ${units.h}` : `${h} ${units.h} ${m} ${units.min}`;
     },
+    // Сначала округляем, потом выбираем единицы: иначе 995 м превращаются в «1000 м», а не в «1 км»
     distance(meters: number): string {
-      if (meters < 1000) return `${Math.round(meters / 10) * 10} ${units.m}`;
+      const rounded = Math.round(meters / 10) * 10;
+      if (rounded < 1000) return `${rounded} ${units.m}`;
       return `${number(meters / 1000, meters < 10000 ? 1 : 0)} ${units.km}`;
     },
     co2(grams: number): string {
-      if (grams < 1000) return `${Math.round(grams)} ${units.g}`;
+      const rounded = Math.round(grams);
+      if (rounded < 1000) return `${rounded} ${units.g}`;
       return `${number(grams / 1000, grams < 10000 ? 1 : 0)} ${units.kg}`;
     },
     date(iso: string): string {

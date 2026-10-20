@@ -5,8 +5,6 @@ import type { Mode } from '@/types';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
-export const MODES: Mode[] = ['walk', 'bike', 'scooter', 'metro', 'transit', 'car'];
-
 /** Штрих линии на карте — для способов, чей путь не построен роутингом. Названия способов — в src/i18n. */
 export const MODE_DASH: Partial<Record<Mode, [number, number]>> = {
   metro: [2, 9],

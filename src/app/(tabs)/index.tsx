@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -67,6 +67,13 @@ export default function RouteScreen() {
   const [sheetHeight, setSheetHeight] = useState(0);
   // useAnimatedValue нет в react-native-web
   const [sheetCollapse] = useState(() => new Animated.Value(0));
+  // Быстрый двойной тап по «Записать» не должен записать поездку дважды: следующая запись — после возврата на экран
+  const recording = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      recording.current = false;
+    }, []),
+  );
 
   useEffect(() => {
     Animated.timing(sheetCollapse, {
@@ -186,7 +193,8 @@ export default function RouteScreen() {
       : s.route.pickPoints;
 
   const record = () => {
-    if (!selectedRoute || !from || !to) return;
+    if (!selectedRoute || !from || !to || recording.current) return;
+    recording.current = true;
     const trip = recordTrip(selectedRoute, carCo2G, placeName(s, from), placeName(s, to));
     router.push({ pathname: '/trip-result', params: { id: trip.id } });
   };
@@ -388,9 +396,11 @@ export default function RouteScreen() {
   );
 }
 
-function effectEquivalent(s: Strings, savedG: number): string {
+function effectEquivalent(s: Strings, savedG: number): string | undefined {
   const { treeDays, phoneCharges } = equivalents(savedG);
-  return treeDays >= 1 ? s.route.treeEquivalent(treeDays) : s.route.phoneEquivalent(phoneCharges);
+  if (treeDays >= 1) return s.route.treeEquivalent(treeDays);
+  // Экономия меньше одной зарядки — сравнивать не с чем
+  return phoneCharges >= 1 ? s.route.phoneEquivalent(phoneCharges) : undefined;
 }
 
 const styles = StyleSheet.create({

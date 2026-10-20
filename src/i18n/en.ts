@@ -105,7 +105,7 @@ export const en: Strings = {
     offline: 'No connection to the routing service — showing rough straight-line estimates.',
     carEffect: (co2) => `By car this trip emits ${co2} of CO₂ — more than any other option.`,
     savedEffect: (how, co2, equivalent) =>
-      `${how} you'll save ${co2} of CO₂ compared with driving — ${equivalent}.`,
+      `${how} you'll save ${co2} of CO₂ compared with driving${equivalent ? ` — ${equivalent}` : ''}.`,
     treeEquivalent: (n) => `as much as a tree absorbs in ${days(n)}`,
     phoneEquivalent: (n) => `like ${phoneCharges(n)}`,
     record: 'Record trip',

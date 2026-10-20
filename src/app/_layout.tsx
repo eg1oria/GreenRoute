@@ -1,11 +1,16 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
 import { Stack } from 'expo-router/stack';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 
 import { useStrings } from '@/i18n';
-import { AppStoreProvider } from '@/store/AppStore';
+import { AppStoreProvider, useAppStore } from '@/store/AppStore';
 import { SettingsProvider, useSettings } from '@/store/Settings';
 import { useTheme } from '@/theme/useTheme';
+
+// Сплэш держим, пока не прочитаны сохранённые настройки и данные
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function RootLayout() {
   return (
@@ -19,10 +24,16 @@ export default function RootLayout() {
 
 function RootNavigator() {
   const t = useTheme();
-  const { hydrated, fontScale } = useSettings();
+  const { hydrated: settingsHydrated, fontScale } = useSettings();
+  const { hydrated: storeHydrated } = useAppStore();
   const s = useStrings();
+  // Ждём сохранённые настройки и данные: иначе при запуске мигают тема устройства и цели по умолчанию
+  const hydrated = settingsHydrated && storeHydrated;
 
-  // Ждём сохранённые настройки, чтобы при запуске не мигала тема устройства вместо выбранной
+  useEffect(() => {
+    if (hydrated) SplashScreen.hide();
+  }, [hydrated]);
+
   if (!hydrated) return null;
 
   const base = t.dark ? DarkTheme : DefaultTheme;

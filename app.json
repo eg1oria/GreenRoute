@@ -7,7 +7,10 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "CFBundleAllowMixedLocalizations": true
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -28,15 +31,31 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "GreenRoute использует ваше местоположение, чтобы строить маршрут от точки, где вы находитесь."
+          "locationWhenInUsePermission": "GreenRoute uses your location to build a route starting from where you are."
         }
       ],
       "expo-font",
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "backgroundColor": "#F7FAF8",
+          "dark": {
+            "backgroundColor": "#0F1A16"
+          }
+        }
+      ]
     ],
     "scheme": "greenroute",
     "experiments": {
       "typedRoutes": true
+    },
+    "locales": {
+      "ru": "./locales/ru.json",
+      "en": "./locales/en.json",
+      "kk": "./locales/kk.json"
     }
   }
 }

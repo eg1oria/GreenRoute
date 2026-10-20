@@ -116,8 +116,8 @@ export const ru = {
     hideMessage: 'Скрыть сообщение',
     offline: 'Нет связи с сервисом маршрутов — показаны примерные оценки по прямой.',
     carEffect: (co2: string) => `На авто эта поездка даст ${co2} CO₂ — больше, чем любой другой способ.`,
-    savedEffect: (how: string, co2: string, equivalent: string) =>
-      `${how} вы сэкономите ${co2} CO₂ по сравнению с авто — ${equivalent}.`,
+    savedEffect: (how: string, co2: string, equivalent?: string) =>
+      `${how} вы сэкономите ${co2} CO₂ по сравнению с авто${equivalent ? ` — ${equivalent}` : ''}.`,
     treeEquivalent: (n: number) => `столько дерево поглощает за ${days(n)}`,
     phoneEquivalent: (n: number) => `как ${phoneCharges(n)}`,
     record: 'Записать поездку',
