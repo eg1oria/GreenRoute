@@ -181,6 +181,9 @@ export const en: Strings = {
     detailsTitle: 'News',
     author: (id) => `Author #${id}`,
     notFound: 'News item not found',
+    machineTranslation: 'Machine translation from English',
+    translating: 'Translating…',
+    translationFailed: "Couldn't translate — showing the original",
   },
   settings: {
     title: 'Settings',

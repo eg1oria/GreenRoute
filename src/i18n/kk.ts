@@ -185,6 +185,9 @@ export const kk: Strings = {
     detailsTitle: 'Жаңалық',
     author: (id) => `Автор №${id}`,
     notFound: 'Жаңалық табылмады',
+    machineTranslation: 'Ағылшын тілінен машиналық аударма',
+    translating: 'Аударылуда…',
+    translationFailed: 'Аудару мүмкін болмады — түпнұсқа көрсетілген',
   },
   settings: {
     title: 'Баптаулар',

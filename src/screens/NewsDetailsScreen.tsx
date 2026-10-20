@@ -1,13 +1,16 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getAnnouncement, getCachedAnnouncements, isAbortError } from '@/api/announcements';
 import { Text } from '@/components/Text';
+import { TranslationStatus } from '@/components/TranslationStatus';
 import { Button, Card } from '@/components/ui';
+import { useTranslatedTexts } from '@/hooks/useTranslatedTexts';
 import { useStrings } from '@/i18n';
+import { useSettings } from '@/store/Settings';
 import { useTheme } from '@/theme/useTheme';
 import type { Announcement } from '@/types/announcement';
 
@@ -17,6 +20,7 @@ export default function NewsDetailsScreen() {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const s = useStrings();
+  const { language } = useSettings();
   // Маршрут передаёт только id — само объявление экран запрашивает сам
   const { id } = useLocalSearchParams<{ id: string }>();
   const announcementId = Number(id);
@@ -59,6 +63,10 @@ export default function NewsDetailsScreen() {
     setAttempt((n) => n + 1);
   };
 
+  const sources = useMemo(() => (item ? [item.title, item.body] : []), [item]);
+  const translation = useTranslatedTexts(sources, language);
+  const [title, body] = translation.texts;
+
   if (loading) {
     return (
       <View style={[styles.center, { backgroundColor: t.background }]}>
@@ -96,13 +104,14 @@ export default function NewsDetailsScreen() {
           <Text style={[styles.bannerText, { color: t.text }]}>{s.news.offlineCache}</Text>
         </View>
       )}
-      <Text style={[styles.title, { color: t.text }]}>{item.title}</Text>
+      <Text style={[styles.title, { color: t.text }]}>{title}</Text>
       <View style={[styles.author, { backgroundColor: t.accentSoft }]}>
         <Ionicons name="person-circle-outline" size={18} color={t.primary} />
         <Text style={[styles.authorText, { color: t.text }]}>{s.news.author(item.userId)}</Text>
       </View>
+      <TranslationStatus {...translation} />
       <Card>
-        <Text style={[styles.body, { color: t.text }]}>{item.body}</Text>
+        <Text style={[styles.body, { color: t.text }]}>{body}</Text>
       </Card>
     </ScrollView>
   );

@@ -195,6 +195,9 @@ export const ru = {
     detailsTitle: 'Новость',
     author: (id: number) => `Автор №${id}`,
     notFound: 'Новость не найдена',
+    machineTranslation: 'Машинный перевод с английского',
+    translating: 'Переводим…',
+    translationFailed: 'Не удалось перевести — показан оригинал',
   },
   settings: {
     title: 'Настройки',

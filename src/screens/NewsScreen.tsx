@@ -5,10 +5,14 @@ import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getAnnouncements, getCachedAnnouncements, isAbortError } from '@/api/announcements';
+import { SOURCE_LANGUAGE, splitSentences } from '@/api/translate';
 import { AnnouncementCard } from '@/components/AnnouncementCard';
 import { Text, TextInput } from '@/components/Text';
+import { TranslationStatus } from '@/components/TranslationStatus';
 import { Button, ScreenTitle } from '@/components/ui';
+import { useTranslatedTexts } from '@/hooks/useTranslatedTexts';
 import { useStrings } from '@/i18n';
+import { useSettings } from '@/store/Settings';
 import { useTheme } from '@/theme/useTheme';
 import type { Announcement } from '@/types/announcement';
 
@@ -17,6 +21,7 @@ export default function NewsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const s = useStrings();
+  const { language } = useSettings();
 
   const [items, setItems] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,10 +83,27 @@ export default function NewsScreen() {
     setAttempt((n) => n + 1);
   };
 
+  // В списке переводим заголовок и первое предложение: полный текст переводится на экране новости —
+  // так дневной лимит бесплатного переводчика расходуется экономнее
+  const sources = useMemo(
+    () =>
+      items.flatMap((item) => [
+        item.title,
+        language === SOURCE_LANGUAGE ? item.body : splitSentences(item.body)[0],
+      ]),
+    [items, language],
+  );
+  const translation = useTranslatedTexts(sources, language);
+  const shown = useMemo(
+    () => items.map((item, i) => ({ ...item, title: translation.texts[2 * i], body: translation.texts[2 * i + 1] })),
+    [items, translation.texts],
+  );
+
+  // Ищем по заголовку на том языке, на котором он показан
   const trimmed = query.trim().toLowerCase();
   const visible = useMemo(
-    () => (trimmed ? items.filter((item) => item.title.toLowerCase().includes(trimmed)) : items),
-    [items, trimmed],
+    () => (trimmed ? shown.filter((item) => item.title.toLowerCase().includes(trimmed)) : shown),
+    [shown, trimmed],
   );
 
   if (loading) {
@@ -141,6 +163,7 @@ export default function NewsScreen() {
               <Text style={[styles.bannerText, { color: t.text }]}>{s.news.offlineCache}</Text>
             </View>
           )}
+          <TranslationStatus {...translation} />
         </View>
       }
       ListEmptyComponent={
