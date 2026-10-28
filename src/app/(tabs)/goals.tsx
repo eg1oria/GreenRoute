@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { Link } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -18,7 +19,7 @@ export default function GoalsScreen() {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const s = useStrings();
-  const { trips, goals, addGoal, removeGoal, adjustGoal, removeTrip } = useAppStore();
+  const { trips, goals, tasks, addGoal, removeGoal, adjustGoal, removeTrip } = useAppStore();
 
   const weekStart = startOfWeek().getTime();
   const totalSavedG = sumMetric(trips, 'co2') * 1000;
@@ -54,6 +55,23 @@ export default function GoalsScreen() {
           {stat(String(sumMetric(trips, 'trips', weekStart)), s.goals.statTrips)}
         </View>
       </Card>
+
+      <Link href="/tasks" asChild>
+        <Pressable accessibilityRole="link">
+          {({ pressed }) => (
+            <Card style={[styles.tasksLink, pressed && styles.pressed]}>
+              <View style={[styles.tasksIcon, { backgroundColor: t.accentSoft }]}>
+                <Ionicons name="school-outline" size={20} color={t.primary} />
+              </View>
+              <View style={styles.tasksMain}>
+                <Text style={[styles.tasksTitle, { color: t.text }]}>{s.tasks.title}</Text>
+                <Text style={[styles.tasksHint, { color: t.textSecondary }]}>{s.tasks.entryHint(tasks.length)}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={t.textSecondary} />
+            </Card>
+          )}
+        </Pressable>
+      </Link>
 
       <SectionTitle>{s.common.weekGoals}</SectionTitle>
       {goals.map((goal) => (
@@ -124,6 +142,12 @@ const styles = StyleSheet.create({
   stat: { flex: 1, gap: 2 },
   statValue: { fontSize: 18, fontWeight: '700' },
   statLabel: { fontSize: 12 },
+  tasksLink: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  pressed: { opacity: 0.6 },
+  tasksIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  tasksMain: { flex: 1, gap: 2 },
+  tasksTitle: { fontSize: 16, fontWeight: '700' },
+  tasksHint: { fontSize: 13 },
   addGoal: {
     flexDirection: 'row',
     alignItems: 'center',

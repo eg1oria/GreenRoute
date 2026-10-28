@@ -56,6 +56,9 @@ function RootNavigator() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="challenge/[id]" options={{ title: s.challenge.screenTitle }} />
         <Stack.Screen name="news/[id]" options={{ title: s.news.detailsTitle }} />
+        <Stack.Screen name="tasks" options={{ title: s.tasks.title }} />
+        <Stack.Screen name="new-task" options={{ title: s.taskForm.screenTitle }} />
+        <Stack.Screen name="new-event" options={{ title: s.eventForm.screenTitle }} />
         <Stack.Screen name="trip-result" options={{ presentation: 'modal', headerShown: false }} />
       </Stack>
       <StatusBar style={t.dark ? 'light' : 'dark'} />

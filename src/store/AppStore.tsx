@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNo
 
 import { METRIC_META } from '@/lib/metrics';
 import type { Goal, Membership, MetricKind, RouteOption, Trip } from '@/types';
+import type { Task, TaskForm } from '@/types/task';
 
 import { DEFAULT_GOALS } from './seed';
 
@@ -12,6 +13,7 @@ type PersistedState = {
   trips: Trip[];
   goals: Goal[];
   memberships: Record<string, Membership>;
+  tasks: Task[];
 };
 
 type State = PersistedState & { hydrated: boolean };
@@ -25,18 +27,23 @@ type Action =
   | { type: 'removeGoal'; id: string }
   | { type: 'adjustGoal'; id: string; direction: 1 | -1 }
   | { type: 'joinTeam'; challengeId: string; teamId: string }
-  | { type: 'leaveChallenge'; challengeId: string };
+  | { type: 'leaveChallenge'; challengeId: string }
+  | { type: 'addTask'; task: Task }
+  | { type: 'removeTask'; id: string };
 
-const initialState: State = { trips: [], goals: DEFAULT_GOALS, memberships: {}, hydrated: false };
+const createId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+
+const initialState: State = { trips: [], goals: DEFAULT_GOALS, memberships: {}, tasks: [], hydrated: false };
 
 // В хранилище может лежать что угодно (старая версия, ручная правка) — поля неверного типа заменяем дефолтом
 function parse(raw: string | null): Partial<PersistedState> {
   const saved: unknown = raw ? JSON.parse(raw) : null;
   if (!saved || typeof saved !== 'object') return {};
-  const { trips, goals, memberships } = saved as Record<string, unknown>;
+  const { trips, goals, memberships, tasks } = saved as Record<string, unknown>;
   const state: Partial<PersistedState> = {};
   if (Array.isArray(trips)) state.trips = trips;
   if (Array.isArray(goals)) state.goals = goals;
+  if (Array.isArray(tasks)) state.tasks = tasks;
   if (typeof memberships === 'object' && memberships !== null && !Array.isArray(memberships)) {
     state.memberships = memberships as PersistedState['memberships'];
   }
@@ -82,6 +89,10 @@ function reducer(state: State, action: Action): State {
       const { [action.challengeId]: _left, ...memberships } = state.memberships;
       return { ...state, memberships };
     }
+    case 'addTask':
+      return { ...state, tasks: [...state.tasks, action.task] };
+    case 'removeTask':
+      return { ...state, tasks: state.tasks.filter((task) => task.id !== action.id) };
   }
 }
 
@@ -94,6 +105,8 @@ type Store = State & {
   adjustGoal: (id: string, direction: 1 | -1) => void;
   joinTeam: (challengeId: string, teamId: string) => void;
   leaveChallenge: (challengeId: string) => void;
+  addTask: (form: TaskForm) => Task;
+  removeTask: (id: string) => void;
 };
 
 const AppStoreContext = createContext<Store | null>(null);
@@ -117,7 +130,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     () => ({
       recordTrip: (route: RouteOption, carCo2G: number, fromName: string, toName: string) => {
         const trip: Trip = {
-          id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+          id: createId(),
           date: new Date().toISOString(),
           mode: route.mode,
           distanceM: route.distanceM,
@@ -137,6 +150,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       adjustGoal: (id: string, direction: 1 | -1) => dispatch({ type: 'adjustGoal', id, direction }),
       joinTeam: (challengeId: string, teamId: string) => dispatch({ type: 'joinTeam', challengeId, teamId }),
       leaveChallenge: (challengeId: string) => dispatch({ type: 'leaveChallenge', challengeId }),
+      addTask: (form: TaskForm) => {
+        const task: Task = { ...form, id: createId(), createdAt: new Date().toISOString() };
+        dispatch({ type: 'addTask', task });
+        return task;
+      },
+      removeTask: (id: string) => dispatch({ type: 'removeTask', id }),
     }),
     [],
   );

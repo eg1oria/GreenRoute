@@ -42,6 +42,12 @@ export function createFormat({ decimal, units, months, monthFirst }: FormatConfi
       const month = months[d.getMonth()];
       return `${monthFirst ? `${month} ${d.getDate()}` : `${d.getDate()} ${month}`}, ${time}`;
     },
+    /** День без времени из строки ГГГГ-ММ-ДД: «5 ноя 2026» */
+    day(ymd: string): string {
+      const [year, month, day] = ymd.split('-').map(Number);
+      const name = months[month - 1];
+      return monthFirst ? `${name} ${day}, ${year}` : `${day} ${name} ${year}`;
+    },
   };
 }
 

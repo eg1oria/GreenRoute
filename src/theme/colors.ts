@@ -37,6 +37,8 @@ export const lightTheme = {
   text: '#1F2A26',
   textSecondary: '#6B7A73',
   border: '#E3EAE6',
+  /** ошибки проверки форм */
+  danger: '#C83349',
 };
 
 export type Theme = typeof lightTheme;
@@ -55,4 +57,5 @@ export const darkTheme: Theme = {
   text: '#E8F1EC',
   textSecondary: '#9DB0A7',
   border: '#27373D',
+  danger: '#F07A8A',
 };
