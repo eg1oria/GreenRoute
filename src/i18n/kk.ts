@@ -84,7 +84,7 @@ export const kk: Strings = {
     outOf: (value, target) => `${value} / ${target}`,
   },
   // «Челлендждер» и «Жаңалықтар» не помещаются под иконкой вкладки при крупном шрифте
-  tabs: { route: 'Бағыт', goals: 'Мақсаттар', challenges: 'Челлендж', news: 'Жаңалық', settings: 'Баптаулар' },
+  tabs: { route: 'Бағыт', goals: 'Мақсаттар', challenges: 'Челлендж', news: 'Жаңалық', favorites: 'Таңдаулы', settings: 'Баптаулар' },
   route: {
     locationDenied:
       'Геолокацияға рұқсат жоқ. Телефон баптауларында рұқсат беріңіз немесе нүктені картадан таңдаңыз.',
@@ -255,6 +255,28 @@ export const kk: Strings = {
     descriptionPlaceholder: 'Іс-шарада не болады',
     submit: 'Іс-шара құру',
     added: (title) => `Іс-шара құрылды: ${title}`,
+  },
+  favorites: {
+    title: 'Таңдаулылар',
+    subtitle: 'Құрылғыда сақталған, интернетсіз қолжетімді хабарландырулар',
+    save: 'Офлайн сақтау',
+    saved: 'Сақталды',
+    alreadySaved: 'Бұрын сақталған',
+    saveFailed: 'Сақтау мүмкін болмады',
+    read: 'Оқылды',
+    unread: 'Оқылмаған',
+    delete: 'Жою',
+    deleteTitle: 'Жазбаны жою керек пе?',
+    deleteMessage: 'Офлайн-көшірме жойылады.',
+    filterAll: 'Барлығы',
+    filterUnread: 'Оқылмаған',
+    unreadCount: (n) => `Оқылмаған: ${n}`,
+    loading: 'Жүктелуде…',
+    empty: 'Сақталған жазбалар жоқ',
+    noUnread: 'Оқылмаған жазбалар жоқ',
+    readError: 'Оқу қатесі',
+    changeError: 'Өзгерту қатесі',
+    reloadError: 'Өзгеріс сақталды. Тізімді жаңарту үшін қойындыдан шығып, қайта оралыңыз.',
   },
   settings: {
     title: 'Баптаулар',

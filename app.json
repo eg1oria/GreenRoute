@@ -46,7 +46,8 @@
             "backgroundColor": "#0F1A16"
           }
         }
-      ]
+      ],
+      "expo-sqlite"
     ],
     "scheme": "greenroute",
     "experiments": {

@@ -10,8 +10,10 @@ import { AnnouncementCard } from '@/components/AnnouncementCard';
 import { Text, TextInput } from '@/components/Text';
 import { TranslationStatus } from '@/components/TranslationStatus';
 import { Button, ScreenTitle } from '@/components/ui';
+import { savePost } from '@/database/favorites';
 import { useTranslatedTexts } from '@/hooks/useTranslatedTexts';
 import { useStrings } from '@/i18n';
+import { showMessage } from '@/lib/dialog';
 import { useSettings } from '@/store/Settings';
 import { useTheme } from '@/theme/useTheme';
 import type { Announcement } from '@/types/announcement';
@@ -106,6 +108,18 @@ export default function NewsScreen() {
     [shown, trimmed],
   );
 
+  // Сохраняем оригинал из items: в списке показан перевод, а в нём только первое предложение текста
+  async function saveOffline(id: number) {
+    const post = items.find((item) => item.id === id);
+    if (!post) return;
+    try {
+      const count = await savePost(post);
+      showMessage(count ? s.favorites.saved : s.favorites.alreadySaved);
+    } catch {
+      showMessage(s.favorites.saveFailed);
+    }
+  }
+
   if (loading) {
     return (
       <View style={[styles.center, { backgroundColor: t.background }]}>
@@ -133,6 +147,9 @@ export default function NewsScreen() {
         <AnnouncementCard
           item={item}
           onPress={() => router.push({ pathname: '/news/[id]', params: { id: String(item.id) } })}
+          onSave={() => {
+            void saveOffline(item.id);
+          }}
         />
       )}
       refreshing={refreshing}

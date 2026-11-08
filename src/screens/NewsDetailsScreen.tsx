@@ -8,6 +8,7 @@ import { getAnnouncement, getCachedAnnouncements, isAbortError } from '@/api/ann
 import { Text } from '@/components/Text';
 import { TranslationStatus } from '@/components/TranslationStatus';
 import { Button, Card } from '@/components/ui';
+import { getSavedPost, markRead } from '@/database/favorites';
 import { useTranslatedTexts } from '@/hooks/useTranslatedTexts';
 import { useStrings } from '@/i18n';
 import { useSettings } from '@/store/Settings';
@@ -15,6 +16,16 @@ import { useTheme } from '@/theme/useTheme';
 import type { Announcement } from '@/types/announcement';
 
 const NOT_FOUND = 'HTTP 404';
+
+/** В офлайн-копии нет автора (userId = 0), поэтому экран его не показывает */
+async function savedCopy(id: number): Promise<Announcement | null> {
+  try {
+    const saved = await getSavedPost(id);
+    return saved && { id: saved.id, title: saved.title, body: saved.body, userId: 0 };
+  } catch {
+    return null;
+  }
+}
 
 export default function NewsDetailsScreen() {
   const t = useTheme();
@@ -42,7 +53,10 @@ export default function NewsDetailsScreen() {
       })
       .catch(async (e) => {
         if (isAbortError(e)) return;
-        const cached = (await getCachedAnnouncements()).find((saved) => saved.id === announcementId);
+        // Нет сети: сначала последний загруженный список, затем офлайн-копия из «Избранного»
+        const cached =
+          (await getCachedAnnouncements()).find((saved) => saved.id === announcementId) ??
+          (await savedCopy(announcementId));
         if (controller.signal.aborted) return;
         if (cached) {
           setItem(cached);
@@ -56,6 +70,12 @@ export default function NewsDetailsScreen() {
       });
     return () => controller.abort();
   }, [announcementId, validId, attempt]);
+
+  // Открытая новость, сохранённая в «Избранном», считается прочитанной. Для несохранённых UPDATE ничего не меняет,
+  // а сбой записи не должен мешать чтению новости
+  useEffect(() => {
+    if (item) markRead([item.id]).catch(() => {});
+  }, [item]);
 
   const retry = () => {
     setError(null);
@@ -105,10 +125,12 @@ export default function NewsDetailsScreen() {
         </View>
       )}
       <Text style={[styles.title, { color: t.text }]}>{title}</Text>
-      <View style={[styles.author, { backgroundColor: t.accentSoft }]}>
-        <Ionicons name="person-circle-outline" size={18} color={t.primary} />
-        <Text style={[styles.authorText, { color: t.text }]}>{s.news.author(item.userId)}</Text>
-      </View>
+      {item.userId > 0 && (
+        <View style={[styles.author, { backgroundColor: t.accentSoft }]}>
+          <Ionicons name="person-circle-outline" size={18} color={t.primary} />
+          <Text style={[styles.authorText, { color: t.text }]}>{s.news.author(item.userId)}</Text>
+        </View>
+      )}
       <TranslationStatus {...translation} />
       <Card>
         <Text style={[styles.body, { color: t.text }]}>{body}</Text>
