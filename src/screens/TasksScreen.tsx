@@ -8,6 +8,7 @@ import { Text } from '@/components/Text';
 import { Button, Card } from '@/components/ui';
 import { useStrings } from '@/i18n';
 import type { IconName } from '@/lib/modes';
+import { cancelReminder } from '@/lib/reminders';
 import { checkFutureDate } from '@/lib/validation';
 import { useAppStore } from '@/store/AppStore';
 import { useTheme } from '@/theme/useTheme';
@@ -31,6 +32,12 @@ export default function TasksScreen() {
   const { tasks, removeTask } = useAppStore();
 
   const sorted = useMemo(() => [...tasks].sort(byDeadline), [tasks]);
+
+  // Вместе с задачей отменяем её напоминание, иначе уведомление придёт об удалённой задаче
+  function remove(task: Task) {
+    if (task.reminderId) cancelReminder(task.reminderId).catch((error) => console.warn(error));
+    removeTask(task.id);
+  }
 
   const tag = (icon: IconName, label: string, color = t.textSecondary) => (
     <View style={styles.tag}>
@@ -77,7 +84,7 @@ export default function TasksScreen() {
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={s.tasks.remove}
-                    onPress={() => removeTask(task.id)}
+                    onPress={() => remove(task)}
                     hitSlop={10}>
                     <Ionicons name="close" size={20} color={t.textSecondary} />
                   </Pressable>
@@ -93,7 +100,8 @@ export default function TasksScreen() {
                   )}
                   {tag('pricetag-outline', s.tasks.category[task.category])}
                   {tag('barbell-outline', s.tasks.effort(task.effort))}
-                  {task.reminder && tag('notifications-outline', s.tasks.reminder)}
+                  {/* Метка — только если уведомление действительно запланировано */}
+                  {!!task.reminderId && tag('notifications-outline', s.tasks.reminder)}
                 </View>
               </Card>
             );

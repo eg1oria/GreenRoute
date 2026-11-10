@@ -5,7 +5,7 @@ import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/Text';
-import { Button, Card, ScreenTitle, SegmentedControl } from '@/components/ui';
+import { Button, Card, SegmentedControl } from '@/components/ui';
 import { getSavedPosts, removeSaved } from '@/database/favorites';
 import type { SavedPost } from '@/database/favorites';
 import { useStrings } from '@/i18n';
@@ -134,12 +134,13 @@ export default function FavoritesScreen() {
   return (
     <FlatList
       style={{ backgroundColor: t.background }}
-      contentContainerStyle={[styles.list, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 32 }]}
+      // Экран стека (открывается из профиля): заголовок — в шапке, сверху отступ от системной панели не нужен
+      contentContainerStyle={[styles.list, { paddingTop: 16, paddingBottom: insets.bottom + 32 }]}
       data={visible}
       keyExtractor={(item) => String(item.id)}
       ListHeaderComponent={
         <View style={styles.header}>
-          <ScreenTitle title={s.favorites.title} subtitle={s.favorites.subtitle} />
+          <Text style={[styles.subtitle, { color: t.textSecondary }]}>{s.favorites.subtitle}</Text>
           <SegmentedControl<Filter>
             options={[
               { value: 'all', label: s.favorites.filterAll, icon: 'albums-outline' },
@@ -172,6 +173,7 @@ export default function FavoritesScreen() {
 const styles = StyleSheet.create({
   list: { paddingHorizontal: 16, gap: 12 },
   header: { gap: 12, marginBottom: 4 },
+  subtitle: { fontSize: 15, lineHeight: 20 },
   counter: { fontSize: 13 },
   message: { fontSize: 15, lineHeight: 21 },
   card: { gap: 12 },

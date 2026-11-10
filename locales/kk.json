@@ -1,5 +1,7 @@
 {
   "ios": {
-    "NSLocationWhenInUseUsageDescription": "GreenRoute сіз тұрған жерден бағыт құру үшін орналасқан жеріңізді пайдаланады."
+    "NSLocationWhenInUseUsageDescription": "GreenRoute сіз тұрған жерден бағыт құру үшін орналасқан жеріңізді пайдаланады.",
+    "NSCameraUsageDescription": "GreenRoute профиль фотосын түсіру үшін камераны пайдаланады.",
+    "NSPhotoLibraryUsageDescription": "GreenRoute профиль фотосын таңдау үшін фотосуреттеріңізді пайдаланады."
   }
 }

@@ -1,5 +1,7 @@
 {
   "ios": {
-    "NSLocationWhenInUseUsageDescription": "GreenRoute uses your location to build a route starting from where you are."
+    "NSLocationWhenInUseUsageDescription": "GreenRoute uses your location to build a route starting from where you are.",
+    "NSCameraUsageDescription": "GreenRoute uses the camera so you can take a profile picture.",
+    "NSPhotoLibraryUsageDescription": "GreenRoute uses your photos so you can choose a profile picture."
   }
 }

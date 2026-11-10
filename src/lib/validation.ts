@@ -20,3 +20,13 @@ export function checkFutureDate(value: string): DateProblem | null {
   today.setHours(0, 0, 0, 0);
   return selected < today ? 'past' : null;
 }
+
+/** Сколько символов можно ввести в имя профиля */
+export const NAME_MAX_LENGTH = 40;
+/** Минимальная длина пароля при регистрации */
+export const PASSWORD_MIN_LENGTH = 6;
+
+/** Проверка формата email: аккаунт локальный, письма на адрес не отправляются */
+export function isEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}

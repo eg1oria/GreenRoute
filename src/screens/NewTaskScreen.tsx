@@ -1,13 +1,24 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useHeaderHeight } from 'expo-router/react-navigation';
 import { useRef, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, type ScrollViewInstance, StyleSheet, Switch, View } from 'react-native';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
+  ScrollView,
+  type ScrollViewInstance,
+  StyleSheet,
+  Switch,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FormField, FormInput } from '@/components/FormField';
 import { Text } from '@/components/Text';
 import { Button, Card, SegmentedControl } from '@/components/ui';
 import { useStrings } from '@/i18n';
+import { remindersSupported, requestReminderPermission, scheduleTaskReminder } from '@/lib/reminders';
 import { checkFutureDate } from '@/lib/validation';
 import { useAppStore } from '@/store/AppStore';
 import { useTheme } from '@/theme/useTheme';
@@ -39,6 +50,11 @@ export default function NewTaskScreen() {
   const [description, setDescription] = useState('');
   const [errors, setErrors] = useState<TaskErrors>({});
   const [added, setAdded] = useState<string | null>(null);
+  // Почему напоминание не включилось; blocked — разрешение можно дать только в настройках телефона
+  const [reminderNote, setReminderNote] = useState<{ text: string; blocked: boolean } | null>(null);
+  // Планирование уведомления асинхронное — ref не даёт отправить форму дважды
+  const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
 
   // Новый ввод убирает ошибку только у изменённого поля
   const edit = <T,>(field: keyof TaskErrors, setValue: (value: T) => void) => (value: T) => {
@@ -88,17 +104,37 @@ export default function NewTaskScreen() {
     setCategory('');
     setEffort('');
     setReminder(false);
+    setReminderNote(null);
     setDescription('');
     setErrors({});
   }
 
-  function handleSubmit() {
+  // Разрешение на уведомления спрашиваем сразу, когда пользователь включает напоминание
+  async function toggleReminder(on: boolean) {
+    setReminderNote(null);
+    setReminder(on);
+    if (!on) return;
+    try {
+      const permission = await requestReminderPermission(s.reminders.channel);
+      if (permission === 'granted') return;
+      setReminder(false);
+      setReminderNote({ text: s.reminders.denied, blocked: permission === 'blocked' });
+    } catch (error) {
+      console.error(error);
+      setReminder(false);
+      setReminderNote({ text: s.reminders.failed, blocked: false });
+    }
+  }
+
+  async function handleSubmit() {
     const nextErrors = validate();
     setErrors(nextErrors);
 
-    if (Object.keys(nextErrors).length > 0) {
+    if (Object.keys(nextErrors).length > 0 || submittingRef.current) {
       return;
     }
+    submittingRef.current = true;
+    setSubmitting(true);
 
     const task: TaskForm = {
       title: title.trim(),
@@ -111,12 +147,34 @@ export default function NewTaskScreen() {
       description: description.trim(),
     };
 
-    addTask(task);
+    // Напоминание — локальное уведомление на этом телефоне: накануне срока в 9:00
+    let reminderId: string | undefined;
+    let reminderText = '';
+    if (task.reminder) {
+      try {
+        const scheduled = await scheduleTaskReminder(task.deadline, {
+          title: s.reminders.title,
+          body: s.reminders.body(task.title, s.format.day(task.deadline)),
+        });
+        reminderId = scheduled.id;
+        reminderText = scheduled.date ? s.reminders.at(s.format.date(scheduled.date.toISOString())) : s.reminders.soon;
+      } catch (error) {
+        console.error(error);
+        // Задачу всё равно сохраняем, но без отметки о напоминании
+        task.reminder = false;
+        reminderText = s.reminders.failed;
+      }
+    }
+
+    addTask(task, reminderId);
     resetForm();
-    setAdded(s.taskForm.added(task.title));
+    const message = reminderText ? `${s.taskForm.added(task.title)}\n${reminderText}` : s.taskForm.added(task.title);
+    setAdded(message);
     // Баннер с результатом — вверху формы, а кнопка отправки внизу
     scrollRef.current?.scrollTo({ y: 0, animated: true });
-    Alert.alert(s.form.doneTitle, s.taskForm.added(task.title));
+    Alert.alert(s.form.doneTitle, message);
+    submittingRef.current = false;
+    setSubmitting(false);
   }
 
   const errorCount = Object.values(errors).filter(Boolean).length;
@@ -201,18 +259,38 @@ export default function NewTaskScreen() {
           />
         </FormField>
 
-        <Card style={styles.switchRow}>
-          <View style={styles.flex}>
-            <Text style={[styles.switchLabel, { color: t.text }]}>{s.taskForm.reminder}</Text>
-            <Text style={[styles.switchHint, { color: t.textSecondary }]}>{s.taskForm.reminderHint}</Text>
+        <Card style={styles.reminderCard}>
+          <View style={styles.switchRow}>
+            <View style={styles.flex}>
+              <Text style={[styles.switchLabel, { color: t.text }]}>{s.taskForm.reminder}</Text>
+              <Text style={[styles.switchHint, { color: t.textSecondary }]}>
+                {remindersSupported ? s.taskForm.reminderHint : s.reminders.webOnly}
+              </Text>
+            </View>
+            <Switch
+              accessibilityLabel={s.taskForm.reminder}
+              value={reminder}
+              onValueChange={(on) => void toggleReminder(on)}
+              disabled={!remindersSupported}
+              trackColor={{ true: t.accent, false: t.border }}
+              thumbColor={Platform.OS === 'android' ? (reminder ? t.primary : t.card) : undefined}
+            />
           </View>
-          <Switch
-            accessibilityLabel={s.taskForm.reminder}
-            value={reminder}
-            onValueChange={setReminder}
-            trackColor={{ true: t.accent, false: t.border }}
-            thumbColor={Platform.OS === 'android' ? (reminder ? t.primary : t.card) : undefined}
-          />
+          {reminderNote && (
+            <Text accessibilityLiveRegion="polite" style={[styles.switchHint, { color: t.danger }]}>
+              {reminderNote.text}
+            </Text>
+          )}
+          {reminderNote?.blocked && (
+            <Button
+              title={s.profile.openSettings}
+              icon="settings-outline"
+              variant="outline"
+              onPress={() => {
+                Linking.openSettings().catch((error) => console.error(error));
+              }}
+            />
+          )}
         </Card>
 
         <FormField
@@ -232,7 +310,12 @@ export default function NewTaskScreen() {
         {errorCount > 0 && (
           <Text style={[styles.summary, { color: t.danger }]}>{s.form.fixErrors(errorCount)}</Text>
         )}
-        <Button title={s.taskForm.submit} icon="add-circle-outline" onPress={handleSubmit} />
+        <Button
+          title={s.taskForm.submit}
+          icon="add-circle-outline"
+          disabled={submitting}
+          onPress={() => void handleSubmit()}
+        />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -243,7 +326,8 @@ const styles = StyleSheet.create({
   screen: { padding: 16, gap: 16 },
   banner: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, padding: 12 },
   bannerText: { flex: 1, fontSize: 15, fontWeight: '600' },
-  switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
+  reminderCard: { gap: 10, paddingVertical: 12 },
+  switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   switchLabel: { fontSize: 15, fontWeight: '700' },
   switchHint: { fontSize: 13, marginTop: 2 },
   summary: { fontSize: 14, fontWeight: '600', textAlign: 'center' },

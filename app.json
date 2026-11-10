@@ -34,6 +34,21 @@
           "locationWhenInUsePermission": "GreenRoute uses your location to build a route starting from where you are."
         }
       ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "GreenRoute uses your photos so you can choose a profile picture.",
+          "cameraPermission": "GreenRoute uses the camera so you can take a profile picture.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#2E7D5B",
+          "enableRemoteNotifications": false
+        }
+      ],
       "expo-font",
       "expo-localization",
       [

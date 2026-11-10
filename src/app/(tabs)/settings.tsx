@@ -6,6 +6,7 @@ import { useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text as FixedText, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { NotificationTest } from '@/components/NotificationTest';
 import { Text } from '@/components/Text';
 import { Card, ScreenTitle, SegmentedControl } from '@/components/ui';
 import { useStrings } from '@/i18n';
@@ -173,6 +174,10 @@ export default function SettingsScreen() {
         <View style={styles.row}>
           <Action label={s.settings.reset} color={actionColor} disabled={isDefault} onPress={reset} />
         </View>
+      </Group>
+
+      <Group title={s.reminders.settingsTitle}>
+        <NotificationTest />
       </Group>
 
       <Group title={s.settings.about}>

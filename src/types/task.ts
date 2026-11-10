@@ -28,7 +28,12 @@ export type TaskForm = {
   description: string;
 };
 
-export type Task = TaskForm & { id: string; createdAt: string };
+export type Task = TaskForm & {
+  id: string;
+  createdAt: string;
+  /** id запланированного уведомления — чтобы отменить напоминание вместе с задачей */
+  reminderId?: string;
+};
 
 export type EventErrors = {
   title?: string;

@@ -73,6 +73,24 @@ export default function GoalsScreen() {
         </Pressable>
       </Link>
 
+      {/* Челленджи раньше были отдельной вкладкой — её место занял профиль */}
+      <Link href="/challenges" asChild>
+        <Pressable accessibilityRole="link">
+          {({ pressed }) => (
+            <Card style={[styles.tasksLink, pressed && styles.pressed]}>
+              <View style={[styles.tasksIcon, { backgroundColor: t.achievement }]}>
+                <Ionicons name="people" size={20} color={t.onAchievement} />
+              </View>
+              <View style={styles.tasksMain}>
+                <Text style={[styles.tasksTitle, { color: t.text }]}>{s.challenges.title}</Text>
+                <Text style={[styles.tasksHint, { color: t.textSecondary }]}>{s.challenges.subtitle}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={t.textSecondary} />
+            </Card>
+          )}
+        </Pressable>
+      </Link>
+
       <SectionTitle>{s.common.weekGoals}</SectionTitle>
       {goals.map((goal) => (
         <GoalCard

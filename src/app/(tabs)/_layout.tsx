@@ -10,9 +10,9 @@ import { useTheme } from '@/theme/useTheme';
 
 // Выше стандартной: под иконкой-«пилюлей» должна помещаться подпись
 const TAB_BAR_HEIGHT = 62;
-// С шестью вкладками на подпись остаётся ~53 pt ширины на телефоне 375 pt — «Челлендж» помещается при размере 9
-const TAB_LABEL_SIZE = 9;
-// Подписи вкладок растут вместе со шрифтом только до этого предела — дальше «Челлендж» не помещается
+// С пятью вкладками на подпись остаётся ~65 pt ширины на телефоне 375 pt — отсюда размер 10 (как в iOS)
+const TAB_LABEL_SIZE = 10;
+// Подписи вкладок растут вместе со шрифтом только до этого предела — дальше длинные подписи не помещаются
 const MAX_LABEL_SCALE = 1.05;
 
 export default function TabsLayout() {
@@ -49,9 +49,8 @@ export default function TabsLayout() {
       }}>
       <Tabs.Screen name="index" options={{ title: s.tabs.route, tabBarIcon: icon('navigate') }} />
       <Tabs.Screen name="goals" options={{ title: s.tabs.goals, tabBarIcon: icon('flag') }} />
-      <Tabs.Screen name="challenges" options={{ title: s.tabs.challenges, tabBarIcon: icon('people') }} />
+      <Tabs.Screen name="profile" options={{ title: s.tabs.profile, tabBarIcon: icon('person') }} />
       <Tabs.Screen name="news" options={{ title: s.tabs.news, tabBarIcon: icon('newspaper') }} />
-      <Tabs.Screen name="favorites" options={{ title: s.tabs.favorites, tabBarIcon: icon('star') }} />
       <Tabs.Screen name="settings" options={{ title: s.tabs.settings, tabBarIcon: icon('settings') }} />
     </Tabs>
   );

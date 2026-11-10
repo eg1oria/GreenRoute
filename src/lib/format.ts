@@ -1,7 +1,7 @@
 type FormatConfig = {
   /** разделитель дробной части */
   decimal: ',' | '.';
-  units: { min: string; h: string; m: string; km: string; g: string; kg: string };
+  units: { min: string; h: string; m: string; km: string; g: string; kg: string; kb: string; mb: string };
   /** сокращённые названия месяцев, с января */
   months: string[];
   /** true — «Oct 5», false — «5 окт» */
@@ -35,6 +35,12 @@ export function createFormat({ decimal, units, months, monthFirst }: FormatConfi
       const rounded = Math.round(grams);
       if (rounded < 1000) return `${rounded} ${units.g}`;
       return `${number(grams / 1000, grams < 10000 ? 1 : 0)} ${units.kg}`;
+    },
+    /** Вес файла: до мегабайта — в килобайтах, дальше — в мегабайтах с одним знаком */
+    fileSize(bytes: number): string {
+      const kb = Math.round(bytes / 1024);
+      if (kb < 1024) return `${Math.max(1, kb)} ${units.kb}`;
+      return `${number(bytes / 1024 / 1024, 1)} ${units.mb}`;
     },
     date(iso: string): string {
       const d = new Date(iso);

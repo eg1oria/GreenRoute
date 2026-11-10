@@ -4,7 +4,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/Text';
-import { ProgressBar, ScreenTitle } from '@/components/ui';
+import { ProgressBar } from '@/components/ui';
 import { useStrings } from '@/i18n';
 import { daysLeft, leaderboard } from '@/lib/challenges';
 import { formatMetric, METRIC_META } from '@/lib/metrics';
@@ -19,11 +19,12 @@ export default function ChallengesScreen() {
   const s = useStrings();
   const { trips, memberships } = useAppStore();
 
+  // Отдельный экран стека (открывается с вкладки «Цели»): заголовок — в шапке, сверху отступ не нужен
   return (
     <ScrollView
       style={{ backgroundColor: t.background }}
-      contentContainerStyle={[styles.content, { paddingTop: insets.top + 16 }]}>
-      <ScreenTitle title={s.challenges.title} subtitle={s.challenges.subtitle} />
+      contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]}>
+      <Text style={[styles.subtitle, { color: t.textSecondary }]}>{s.challenges.subtitle}</Text>
 
       {CHALLENGES.map((challenge) => {
         const rows = leaderboard(challenge, memberships[challenge.id], trips);
@@ -87,7 +88,8 @@ export default function ChallengesScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 16, paddingBottom: 32, gap: 12 },
+  content: { padding: 16, gap: 12 },
+  subtitle: { fontSize: 15, lineHeight: 20 },
   card: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 12 },
   pressed: { opacity: 0.8 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12 },

@@ -5,18 +5,25 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
 import { useStrings } from '@/i18n';
+import { configureReminders, useReminderNavigation } from '@/lib/reminders';
 import { AppStoreProvider, useAppStore } from '@/store/AppStore';
+import { AuthProvider } from '@/store/Auth';
 import { SettingsProvider, useSettings } from '@/store/Settings';
 import { useTheme } from '@/theme/useTheme';
 
 // Сплэш держим, пока не прочитаны сохранённые настройки и данные
 SplashScreen.preventAutoHideAsync().catch(() => {});
+// Напоминания о задачах показываются и при открытом приложении
+configureReminders();
 
 export default function RootLayout() {
   return (
     <SettingsProvider>
       <AppStoreProvider>
-        <RootNavigator />
+        {/* Вход нужен только профилю: остальные вкладки не ждут проверки входа */}
+        <AuthProvider>
+          <RootNavigator />
+        </AuthProvider>
       </AppStoreProvider>
     </SettingsProvider>
   );
@@ -33,6 +40,8 @@ function RootNavigator() {
   useEffect(() => {
     if (hydrated) SplashScreen.hide();
   }, [hydrated]);
+  // Нажатие на напоминание открывает «Учебные задачи», когда навигация уже показана
+  useReminderNavigation(hydrated);
 
   if (!hydrated) return null;
 
@@ -54,8 +63,10 @@ function RootNavigator() {
           contentStyle: { backgroundColor: t.background },
         }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="challenges" options={{ title: s.challenges.title }} />
         <Stack.Screen name="challenge/[id]" options={{ title: s.challenge.screenTitle }} />
         <Stack.Screen name="news/[id]" options={{ title: s.news.detailsTitle }} />
+        <Stack.Screen name="favorites" options={{ title: s.favorites.title }} />
         <Stack.Screen name="tasks" options={{ title: s.tasks.title }} />
         <Stack.Screen name="new-task" options={{ title: s.taskForm.screenTitle }} />
         <Stack.Screen name="new-event" options={{ title: s.eventForm.screenTitle }} />

@@ -105,7 +105,7 @@ type Store = State & {
   adjustGoal: (id: string, direction: 1 | -1) => void;
   joinTeam: (challengeId: string, teamId: string) => void;
   leaveChallenge: (challengeId: string) => void;
-  addTask: (form: TaskForm) => Task;
+  addTask: (form: TaskForm, reminderId?: string) => Task;
   removeTask: (id: string) => void;
 };
 
@@ -150,8 +150,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       adjustGoal: (id: string, direction: 1 | -1) => dispatch({ type: 'adjustGoal', id, direction }),
       joinTeam: (challengeId: string, teamId: string) => dispatch({ type: 'joinTeam', challengeId, teamId }),
       leaveChallenge: (challengeId: string) => dispatch({ type: 'leaveChallenge', challengeId }),
-      addTask: (form: TaskForm) => {
-        const task: Task = { ...form, id: createId(), createdAt: new Date().toISOString() };
+      addTask: (form: TaskForm, reminderId?: string) => {
+        const task: Task = {
+          ...form,
+          id: createId(),
+          createdAt: new Date().toISOString(),
+          ...(reminderId ? { reminderId } : {}),
+        };
         dispatch({ type: 'addTask', task });
         return task;
       },
